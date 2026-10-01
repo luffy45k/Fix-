@@ -1,0 +1,578 @@
+#!/usr/bin/env sh
+# Bullet - tiny Termux AI OS shell
+# Offline first. Optional online AI via OpenAI-compatible API.
+
+set -u
+VERSION="0.3.0"
+DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
+CONFIG="$DATA_DIR/config"
+NOTES="$DATA_DIR/notes.md"
+AGI_MEM="$DATA_DIR/agi-memory.md"
+AGI_TASKS="$DATA_DIR/agi-tasks.md"
+DEFAULT_BASE="https://api.openai.com/v1"
+DEFAULT_MODEL="gpt-4o-mini"
+
+# shellcheck disable=SC1090
+[ -f "$CONFIG" ] && . "$CONFIG"
+
+API_BASE="${BULLET_API_BASE:-$DEFAULT_BASE}"
+MODEL="${BULLET_MODEL:-$DEFAULT_MODEL}"
+API_KEY="${BULLET_API_KEY:-}"
+OFFLINE="${BULLET_OFFLINE:-0}"
+
+mkdirp() { [ -d "$1" ] || mkdir -p "$1"; }
+
+mode_text() {
+  if [ "$OFFLINE" = "1" ]; then
+    printf offline
+  elif [ -n "$API_KEY" ] || [ "$API_BASE" != "$DEFAULT_BASE" ]; then
+    printf online
+  else
+    printf offline
+  fi
+}
+
+shell_quote() {
+  printf "%s" "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"
+}
+
+json_escape() {
+  # Good enough for prompts sent to OpenAI-compatible chat APIs.
+  printf "%s" "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; :a; N; $!ba; s/\n/\\n/g'
+}
+
+extract_text() {
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '.choices[0].message.content // .output_text // .error.message // empty'
+    return
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; d=json.load(sys.stdin); print((((d.get("choices") or [{}])[0].get("message") or {}).get("content")) or d.get("output_text") or (d.get("error") or {}).get("message") or "")'
+    return
+  fi
+  tr '\n' ' ' | sed -n 's/.*"content"[[:space:]]*:[[:space:]]*"\([^"\\]*\(\\.[^"\\]*\)*\)".*/\1/p' | sed 's/\\n/\
+/g; s/\\"/"/g; s/\\\\/\\/g'
+}
+
+offline_ai() {
+  prompt="$*"
+  p=$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]')
+
+  case "$p" in
+    *help*|*topic*|*what\ can\ you\ do*|"")
+      cat <<EOF
+Bullet offline AI is running locally from built-in Termux recipes.
+Try:
+  bullet offline "storage clean"
+  bullet offline "backup home"
+  bullet offline "python setup"
+  bullet offline "git setup"
+  bullet offline "find large files"
+  bullet agi "make my Termux faster"
+  bullet note "idea" && bullet notes
+No internet, key, Python, or model is required.
+EOF
+      ;;
+    *agi*|*agent*|*goal*)
+      cat <<EOF
+Offline AGI mode is available as a tiny local goal agent.
+This is not real AGI; in Bullet, AGI means Autonomous Goal Interface.
+Use:
+  bullet agi "your goal"
+  bullet agi tasks
+  bullet agi remember "important context"
+  bullet agi memory
+EOF
+      ;;
+    *storage*|*space*|*clean*|*delete\ cache*|*free*)
+      cat <<EOF
+Offline plan: free Termux storage safely.
+Commands:
+  du -h -d 1 ~ | sort -h
+  apt clean 2>/dev/null || pkg clean
+  rm -rf ~/.cache/* 2>/dev/null
+  find ~ -type f -size +100M -print
+Avoid deleting Android shared folders unless you know the files.
+EOF
+      ;;
+    *backup*|*archive*|*tar*)
+      cat <<EOF
+Offline plan: backup your Termux home.
+Commands:
+  cd ~
+  tar -czf termux-home-backup.tgz --exclude .cache .
+  ls -lh termux-home-backup.tgz
+Restore later with:
+  mkdir restore && tar -xzf termux-home-backup.tgz -C restore
+EOF
+      ;;
+    *find*large*|*big*file*|*large\ file*)
+      cat <<EOF
+Offline plan: find large files.
+Commands:
+  find ~ -type f -size +50M -print 2>/dev/null
+  du -h -d 2 ~ 2>/dev/null | sort -h | tail -30
+Tip: inspect before deleting.
+EOF
+      ;;
+    *storage\ permission*|*shared\ storage*|*sdcard*|*download*)
+      cat <<EOF
+Offline plan: enable Android shared storage in Termux.
+Command:
+  termux-setup-storage
+Then check:
+  ls ~/storage/downloads
+  ls /sdcard
+EOF
+      ;;
+    *python*|*pip*)
+      cat <<EOF
+Offline recipe: Python in Termux.
+If packages are already installed:
+  python --version
+  python script.py
+When online later, install with:
+  pkg install python
+  python -m pip install --upgrade pip
+EOF
+      ;;
+    *git*|*github*|*clone*)
+      cat <<EOF
+Offline recipe: Git basics.
+Commands that work offline inside an existing repo:
+  git status
+  git add FILE
+  git commit -m "message"
+  git log --oneline -5
+Network commands like clone/pull/push need internet.
+EOF
+      ;;
+    *network*|*wifi*|*ip\ addr*|*internet*|*ping*)
+      cat <<EOF
+Offline/local network checks:
+  ip addr
+  getprop wifi.interface 2>/dev/null
+  ping -c 3 127.0.0.1
+Internet checks, only when online:
+  ping -c 3 8.8.8.8
+  curl -I https://example.com
+EOF
+      ;;
+    *battery*|*sms*|*contact*|*termux-api*)
+      cat <<EOF
+Offline recipe: Termux Android APIs.
+Install the Termux:API app and package when available:
+  pkg install termux-api
+Examples:
+  termux-battery-status
+  termux-wifi-connectioninfo
+These commands use local Android APIs, not cloud AI.
+EOF
+      ;;
+    *process*|*running*|*kill*|*top*)
+      cat <<EOF
+Offline recipe: inspect running processes.
+Commands:
+  ps -A
+  top
+  pkill -f NAME
+Be careful with kill/pkill; unsaved work can be lost.
+EOF
+      ;;
+    *install*|*package*|*pkg*|*apt*)
+      cat <<EOF
+Offline package note:
+  pkg list-installed
+  dpkg -l
+Installing new packages usually needs internet or a local repo/cache.
+When online:
+  pkg update
+  pkg install PACKAGE
+EOF
+      ;;
+    *run\ offline*|*offline*)
+      cat <<EOF
+Bullet is in offline mode now.
+Use:
+  bullet offline "help"
+  bullet offline "storage clean"
+  BULLET_OFFLINE=1 bullet ask "backup home"
+Plain built-ins also work offline:
+  bullet note "idea"
+  bullet notes
+  bullet sys
+  bullet run "pwd"
+EOF
+      ;;
+    *)
+      cat <<EOF
+Bullet offline AI answer for: $prompt
+I am running without internet or a model, so I can only use built-in Termux recipes.
+Useful offline commands:
+  bullet offline "help"
+  bullet agi "plan my goal"
+  bullet offline "storage clean"
+  bullet offline "backup home"
+  bullet offline "find large files"
+  bullet sys
+For a real local LLM later, point Bullet at a local OpenAI-compatible server:
+  BULLET_API_BASE=http://127.0.0.1:11434/v1 BULLET_MODEL=tinyllama bullet ask "$prompt"
+EOF
+      ;;
+  esac
+}
+
+ai() {
+  prompt="$*"
+  [ -n "$prompt" ] || { printf 'Ask what?\n' >&2; return 2; }
+
+  if [ "$OFFLINE" = "1" ] || { [ -z "$API_KEY" ] && [ "$API_BASE" = "$DEFAULT_BASE" ]; }; then
+    offline_ai "$prompt"
+    return 0
+  fi
+  command -v curl >/dev/null 2>&1 || { printf 'curl is required for online AI. In Termux: pkg install curl\n' >&2; return 127; }
+
+  system='You are Bullet, a tiny Termux AI OS assistant. Be concise, practical, and safe. Prefer commands that work in Termux. Warn before destructive commands.'
+  eprompt=$(json_escape "$prompt")
+  esystem=$(json_escape "$system")
+  emodel=$(json_escape "$MODEL")
+  body=$(printf '{"model":"%s","messages":[{"role":"system","content":"%s"},{"role":"user","content":"%s"}],"temperature":0.2}' "$emodel" "$esystem" "$eprompt")
+
+  if [ -n "$API_KEY" ]; then
+    resp=$(curl -fsS "$API_BASE/chat/completions" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $API_KEY" \
+      -d "$body") || { printf 'AI request failed. Check key/base/model/network. Try: BULLET_OFFLINE=1 bullet ask "%s"\n' "$prompt" >&2; return 1; }
+  else
+    resp=$(curl -fsS "$API_BASE/chat/completions" \
+      -H "Content-Type: application/json" \
+      -d "$body") || { printf 'AI request failed. Check base/model/network. Try: BULLET_OFFLINE=1 bullet ask "%s"\n' "$prompt" >&2; return 1; }
+  fi
+
+  text=$(printf '%s' "$resp" | extract_text)
+  [ -n "$text" ] && printf '%s\n' "$text" || printf '%s\n' "$resp"
+}
+
+save_config() {
+  key="${1:-}"
+  model="${2:-$MODEL}"
+  base="${3:-$API_BASE}"
+  [ -n "$key" ] || { printf 'Usage: bullet config KEY [MODEL] [BASE_URL]\n' >&2; return 2; }
+  mkdirp "$DATA_DIR"
+  umask 077
+  {
+    printf 'BULLET_API_KEY=%s\n' "$(shell_quote "$key")"
+    printf 'BULLET_MODEL=%s\n' "$(shell_quote "$model")"
+    printf 'BULLET_API_BASE=%s\n' "$(shell_quote "$base")"
+  } > "$CONFIG"
+  printf 'Saved config to %s\n' "$CONFIG"
+}
+
+add_note() {
+  note="$*"
+  [ -n "$note" ] || { printf 'Usage: bullet note "text"\n' >&2; return 2; }
+  mkdirp "$DATA_DIR"
+  printf -- '- %s  %s\n' "$(date '+%Y-%m-%d %H:%M')" "$note" >> "$NOTES"
+  printf 'Saved note.\n'
+}
+
+show_notes() {
+  [ -f "$NOTES" ] && cat "$NOTES" || printf 'No notes yet.\n'
+}
+
+agi_usage() {
+  cat <<EOF
+Bullet AGI - Autonomous Goal Interface
+
+This is a tiny offline goal agent, not real artificial general intelligence.
+It turns a goal into an observe/plan/act/review checklist and stores memory.
+
+Usage:
+  bullet agi "GOAL"              Plan a goal locally
+  bullet agi plan "GOAL"         Same as above
+  bullet agi remember TEXT       Save AGI memory/context
+  bullet agi memory              Show AGI memory
+  bullet agi tasks               Show saved AGI goals
+
+Examples:
+  bullet agi "make my Termux faster"
+  bullet agi "backup my home folder"
+  bullet agi "prepare a Python coding setup"
+EOF
+}
+
+agi_plan() {
+  goal="$*"
+  p=$(printf '%s' "$goal" | tr '[:upper:]' '[:lower:]')
+
+  case "$p" in
+    *storage*|*space*|*clean*|*fast*|*faster*|*optimi*)
+      cat <<EOF
+Observe:
+  1. Measure biggest folders before changing anything.
+  2. Check package cache and user cache.
+Plan:
+  1. Review disk usage.
+  2. Clean package/cache files only.
+  3. Find large files and inspect them manually.
+Act candidates:
+  bullet run "du -h -d 1 ~ 2>/dev/null | sort -h"
+  bullet run "apt clean 2>/dev/null || pkg clean"
+  bullet run "find ~ -type f -size +100M -print 2>/dev/null"
+Review:
+  Run bullet sys, then compare free space. Do not delete unknown Android files.
+EOF
+      ;;
+    *backup*|*restore*|*archive*|*save\ my*)
+      cat <<EOF
+Observe:
+  1. Check available storage.
+  2. Decide what to exclude: cache, downloads, build folders.
+Plan:
+  1. Create a compressed archive of Termux home.
+  2. Verify the archive exists and has size.
+  3. Move/copy it to shared storage if needed.
+Act candidates:
+  bullet run "cd ~ && tar -czf termux-home-backup.tgz --exclude .cache ."
+  bullet run "ls -lh ~/termux-home-backup.tgz"
+  bullet run "mkdir -p ~/storage/downloads 2>/dev/null; cp ~/termux-home-backup.tgz ~/storage/downloads/ 2>/dev/null"
+Review:
+  Test restore in a temp folder before trusting any backup.
+EOF
+      ;;
+    *python*|*coding*|*code*|*program*|*script*|*dev*)
+      cat <<EOF
+Observe:
+  1. Check installed languages and current project files.
+  2. Identify the smallest next runnable script or test.
+Plan:
+  1. Confirm Python/Git availability.
+  2. Create or edit one small file.
+  3. Run it, inspect output, then iterate.
+Act candidates:
+  bullet run "python --version 2>/dev/null || echo 'python not installed'"
+  bullet run "git status 2>/dev/null || pwd"
+  bullet run "ls -la"
+Review:
+  Keep changes small. Save notes with bullet note "what changed".
+EOF
+      ;;
+    *git*|*github*|*commit*|*repo*)
+      cat <<EOF
+Observe:
+  1. Check repository state.
+  2. Read changed files before committing.
+Plan:
+  1. Run status and diff.
+  2. Stage only intended files.
+  3. Commit with a clear message.
+Act candidates:
+  bullet run "git status --short"
+  bullet run "git diff --stat"
+  bullet run "git log --oneline -5"
+Review:
+  Push/pull/clone need internet. Never commit secrets.
+EOF
+      ;;
+    *learn*|*study*|*exam*|*plan*)
+      cat <<EOF
+Observe:
+  1. Define the topic and deadline.
+  2. List what you already know.
+Plan:
+  1. Split into 3 small study blocks.
+  2. Create one practice task per block.
+  3. Review errors and save notes.
+Act candidates:
+  bullet note "Study goal: $goal"
+  bullet note "Next study block: 25 minutes"
+  bullet notes
+Review:
+  Use short sessions. Update AGI memory with bullet agi remember "progress".
+EOF
+      ;;
+    *phone*|*android*|*battery*|*api*)
+      cat <<EOF
+Observe:
+  1. Check system info and available Termux APIs.
+  2. Check whether Termux:API app/package is installed.
+Plan:
+  1. Run local system checks.
+  2. Use Android API commands only if installed.
+  3. Save useful readings to notes.
+Act candidates:
+  bullet sys
+  bullet run "command -v termux-battery-status && termux-battery-status || echo 'termux-api not installed'"
+  bullet run "command -v termux-wifi-connectioninfo && termux-wifi-connectioninfo || true"
+Review:
+  Android permission prompts may appear on the phone.
+EOF
+      ;;
+    *)
+      cat <<EOF
+Observe:
+  1. Restate the goal in one sentence: $goal
+  2. List files, tools, constraints, and risks.
+Plan:
+  1. Break the goal into the smallest safe next action.
+  2. Prefer read-only checks first.
+  3. Act once, then review the result.
+Act candidates:
+  bullet sys
+  bullet notes
+  bullet run "pwd && ls -la"
+Review:
+  Save what you learn with bullet agi remember "..." and rerun bullet agi with a sharper goal.
+EOF
+      ;;
+  esac
+}
+
+agi_goal() {
+  goal="$*"
+  [ -n "$goal" ] || { agi_usage; return 2; }
+  now=$(date '+%Y-%m-%d %H:%M')
+  plan=$(agi_plan "$goal")
+  mkdirp "$DATA_DIR"
+  {
+    printf '\n## %s\n' "$now"
+    printf 'Goal: %s\n\n' "$goal"
+    printf '%s\n' "$plan"
+  } >> "$AGI_MEM"
+  printf -- '- [ ] %s  %s\n' "$now" "$goal" >> "$AGI_TASKS"
+
+  printf 'Bullet AGI: Autonomous Goal Interface (offline, tiny, not real AGI)\n'
+  printf 'Goal: %s\n\n' "$goal"
+  printf '%s\n\n' "$plan"
+  printf 'Saved memory: %s\n' "$AGI_MEM"
+  printf 'Saved task: %s\n' "$AGI_TASKS"
+}
+
+agi_remember() {
+  text="$*"
+  [ -n "$text" ] || { printf 'Usage: bullet agi remember TEXT\n' >&2; return 2; }
+  mkdirp "$DATA_DIR"
+  printf -- '- %s  %s\n' "$(date '+%Y-%m-%d %H:%M')" "$text" >> "$AGI_MEM"
+  printf 'Saved AGI memory.\n'
+}
+
+agi_show_file() {
+  file="$1"
+  empty_msg="$2"
+  [ -f "$file" ] && cat "$file" || printf '%s\n' "$empty_msg"
+}
+
+agi_cmd() {
+  [ $# -gt 0 ] || { agi_usage; return 0; }
+  sub="$1"
+  case "$sub" in
+    help|-h|--help) [ $# -eq 1 ] && agi_usage || agi_goal "$@" ;;
+    memory|mem) agi_show_file "$AGI_MEM" "No AGI memory yet." ;;
+    tasks|task|goals) agi_show_file "$AGI_TASKS" "No AGI tasks yet." ;;
+    remember) shift; agi_remember "$@" ;;
+    plan|goal|run) shift; agi_goal "$@" ;;
+    *) agi_goal "$@" ;;
+  esac
+}
+
+show_sys() {
+  printf 'Bullet %s\n' "$VERSION"
+  printf 'Home: %s\n' "$DATA_DIR"
+  printf 'Mode: %s\n' "$(mode_text)"
+  printf 'Model: %s\n' "$MODEL"
+  printf 'Base: %s\n' "$API_BASE"
+  printf 'Key: %s\n' "$( [ -n "$API_KEY" ] && printf configured || printf missing )"
+  printf 'AGI: %s\n' "Autonomous Goal Interface"
+  printf '\nSystem:\n'
+  uname -a 2>/dev/null || true
+  printf '\nStorage:\n'
+  df -h "$HOME" 2>/dev/null || true
+}
+
+doctor() {
+  show_sys
+  printf '\nChecks:\n'
+  command -v curl >/dev/null 2>&1 && printf 'OK curl: %s\n' "$(command -v curl)" || printf 'OPT curl (needed only for online AI; Termux: pkg install curl)\n'
+  command -v jq >/dev/null 2>&1 && printf 'OK jq: %s\n' "$(command -v jq)" || printf 'OPT jq (better online JSON parsing; Termux: pkg install jq)\n'
+}
+
+install_self() {
+  dest="${PREFIX:-$HOME/.local}/bin"
+  mkdirp "$dest"
+  cp "$0" "$dest/bullet"
+  chmod +x "$dest/bullet"
+  printf 'Installed to %s/bullet\n' "$dest"
+  printf 'If needed, add to PATH: export PATH="%s:$PATH"\n' "$dest"
+}
+
+usage() {
+  cat <<EOF
+Bullet - mini Termux AI OS (${VERSION})
+
+Usage:
+  bullet                  Start mini shell
+  bullet ask TEXT         Ask AI; offline fallback if no API is configured
+  bullet offline TEXT     Force local offline recipes, no network
+  bullet agi GOAL         Offline AGI-style goal planner and memory
+  bullet agi tasks        Show saved AGI goals
+  bullet agi memory       Show AGI memory
+  bullet config KEY [MODEL] [BASE_URL]
+  bullet note TEXT        Save a tiny note
+  bullet notes            Show notes
+  bullet run COMMAND      Run a shell command
+  bullet sys              Show phone/Linux info
+  bullet doctor           Check setup
+  bullet install          Copy to \$PREFIX/bin/bullet
+
+Env:
+  BULLET_OFFLINE=1        Force offline answers
+  BULLET_API_KEY, BULLET_MODEL, BULLET_API_BASE, BULLET_HOME
+
+Mini shell commands:
+  /ask TEXT, /offline TEXT, /agi TEXT, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
+EOF
+}
+
+mini_shell() {
+  printf 'Bullet mini OS. Type /help or /exit. Plain text asks AI/offline recipes.\n'
+  while :; do
+    printf 'bullet> '
+    IFS= read -r line || break
+    case "$line" in
+      '') ;;
+      /exit|exit|quit|/quit) break ;;
+      /help) usage ;;
+      /ask\ *) ai "${line#/ask }" ;;
+      /offline\ *) offline_ai "${line#/offline }" ;;
+      /agi\ memory) agi_cmd memory ;;
+      /agi\ tasks) agi_cmd tasks ;;
+      /agi\ remember\ *) agi_cmd remember "${line#/agi remember }" ;;
+      /agi\ *) agi_goal "${line#/agi }" ;;
+      /note\ *) add_note "${line#/note }" ;;
+      /notes) show_notes ;;
+      /run\ *) sh -c "${line#/run }" ;;
+      /sys) show_sys ;;
+      /*) printf 'Unknown command. Type /help.\n' >&2 ;;
+      *) ai "$line" ;;
+    esac
+  done
+}
+
+cmd="${1:-shell}"
+[ $# -gt 0 ] && shift || true
+case "$cmd" in
+  shell) mini_shell ;;
+  ask|a) ai "$@" ;;
+  offline|off) offline_ai "$@" ;;
+  agi|agent) agi_cmd "$@" ;;
+  config) save_config "$@" ;;
+  note) add_note "$@" ;;
+  notes) show_notes ;;
+  run|sh) sh -c "$*" ;;
+  sys) show_sys ;;
+  doctor) doctor ;;
+  install) install_self ;;
+  help|-h|--help) usage ;;
+  version|-v|--version) printf '%s\n' "$VERSION" ;;
+  *) printf 'Unknown command: %s\n\n' "$cmd" >&2; usage >&2; exit 2 ;;
+esac
