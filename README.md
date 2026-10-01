@@ -9,6 +9,7 @@ A tiny **offline-first AI CLI shell for Termux**. It stays small: one POSIX `sh`
 - `bullet chat "TEXT"` sends one bot message.
 - `bullet agi "GOAL"` runs **AGI mode**: a tiny offline Autonomous Goal Interface that plans, stores memory, and tracks goals.
 - `bullet fix big` or `bullet bigfix` runs a safe big-fix checklist plus self-test.
+- `bullet legend` runs automatic build/check, code update, install, self-test, and doctor.
 - `bullet test` runs the built-in offline self-test. It stays offline even if bad API config exists.
 - `bullet ask "..."` uses offline recipes by default until you configure an API.
 - `BULLET_OFFLINE=1 bullet ask "..."` forces offline mode even if API config exists.
@@ -122,6 +123,35 @@ AGI files are stored in:
 ~/.bullet/agi-tasks.md
 ```
 
+## Legend auto runner
+
+Run automatic build/check, git update, reinstall, self-test, doctor, and bug-fix checks:
+
+```sh
+bullet legend
+```
+
+Run package upgrade too:
+
+```sh
+bullet legend upgrade
+```
+
+Aliases:
+
+```sh
+bullet auto
+bullet update
+bullet build
+bullet all
+```
+
+For package upgrade from environment:
+
+```sh
+BULLET_LEGEND_UPGRADE=1 bullet legend
+```
+
 ## Fix mode
 
 ```sh
@@ -177,6 +207,7 @@ Commands inside the shell:
 /agi tasks          show saved AGI goals
 /agi memory         show AGI memory
 /fix TEXT           safe fix/checklist mode
+/legend            run auto build/update/test
 /bigfix            run big-fix checklist
 /test               run self-test
 /note TEXT          save a note
@@ -192,5 +223,5 @@ Commands inside the shell:
 - Main script: `bullet`
 - Installer: `install-termux.sh`
 - Runtime data: `~/.bullet/`
-- No required runtime dependency for offline recipes, AI chat bot, AGI mode, fix mode, or self-test.
+- No required runtime dependency for offline recipes, AI chat bot, AGI mode, legend mode, fix mode, or self-test.
 - Optional extras: `curl` for online AI, `jq` for better online JSON parsing.

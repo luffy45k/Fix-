@@ -3,7 +3,7 @@
 # Offline first. Optional online AI via OpenAI-compatible API.
 
 set -u
-VERSION="0.5.2"
+VERSION="0.6.0"
 DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
 CONFIG="$DATA_DIR/config"
 NOTES="$DATA_DIR/notes.md"
@@ -697,6 +697,7 @@ Use:
   bullet fix permission   Android storage permission plan
   bullet fix git          Git/repo checks
   bullet test             Run built-in self-test
+  bullet legend           Auto build/update/install/test runner
 
 Fix mode prints safe commands first. It does not delete personal files.
 EOF
@@ -756,6 +757,77 @@ EOF
   esac
 }
 
+
+legend_cmd() {
+  mode="${1:-safe}"
+  p=$(printf '%s' "$*" | tr '[:upper:]' '[:lower:]')
+  printf 'Bullet Legend Auto Runner (%s)\n' "$VERSION"
+  printf 'Mode: %s\n\n' "$mode"
+
+  printf '== 1. Build/check ==\n'
+  if [ -f ./bullet ]; then
+    sh -n ./bullet && printf 'OK syntax: ./bullet\n' || printf 'WARN syntax check failed: ./bullet\n'
+    chmod +x ./bullet 2>/dev/null || true
+  else
+    printf 'INFO no ./bullet in current folder, using installed script.\n'
+  fi
+  if [ -f ./install-termux.sh ]; then
+    sh -n ./install-termux.sh && printf 'OK syntax: ./install-termux.sh\n' || printf 'WARN syntax check failed: ./install-termux.sh\n'
+    chmod +x ./install-termux.sh 2>/dev/null || true
+  fi
+
+  printf '\n== 2. Update code ==\n'
+  if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    branch=$(git branch --show-current 2>/dev/null || true)
+    if [ -n "$branch" ]; then
+      printf 'Git branch: %s\n' "$branch"
+      git fetch origin "$branch" || printf 'WARN git fetch failed. Check internet/repo.\n'
+      git pull --ff-only origin "$branch" || printf 'WARN git pull failed. Commit/stash local changes or check internet.\n'
+    else
+      printf 'WARN detached git state; skipping pull.\n'
+    fi
+  else
+    printf 'INFO not inside a git repo or git missing; skipping code pull.\n'
+  fi
+
+  printf '\n== 3. Upgrade packages ==\n'
+  upgrade_pkgs=0
+  is_on "${BULLET_LEGEND_UPGRADE:-0}" && upgrade_pkgs=1
+  case "$p" in *upgrade*|*full*|*all*) upgrade_pkgs=1 ;; esac
+  if [ "$upgrade_pkgs" = "1" ]; then
+    if command -v pkg >/dev/null 2>&1; then
+      pkg update -y || printf 'WARN pkg update failed.\n'
+      pkg upgrade -y || printf 'WARN pkg upgrade failed.\n'
+    elif command -v apt >/dev/null 2>&1; then
+      apt update || printf 'WARN apt update failed.\n'
+      apt upgrade -y || printf 'WARN apt upgrade failed.\n'
+    else
+      printf 'INFO no pkg/apt found; skipping package upgrade.\n'
+    fi
+  else
+    printf 'SKIP package upgrade. To run it: bullet legend upgrade\n'
+  fi
+
+  printf '\n== 4. Install/update Bullet ==\n'
+  if [ -f ./install-termux.sh ] && [ -f ./bullet ]; then
+    sh ./install-termux.sh || printf 'WARN install-termux.sh failed.\n'
+  else
+    install_self || printf 'WARN install_self failed.\n'
+  fi
+  hash -r 2>/dev/null || true
+
+  printf '\n== 5. Bug fix/self-test ==\n'
+  self_test || printf 'WARN self-test reported failure.\n'
+
+  printf '\n== 6. Doctor ==\n'
+  doctor
+
+  printf '\nLegend complete. Next commands:\n'
+  printf '  bullet chat hello\n'
+  printf '  bullet bigfix\n'
+  printf '  bullet legend upgrade\n'
+}
+
 install_self() {
   dest="${PREFIX:-$HOME/.local}/bin"
   src="$0"
@@ -792,6 +864,7 @@ Usage:
   bullet agi memory       Show AGI memory
   bullet fix TOPIC        Safe Termux fix/checklist mode
   bullet bigfix           Run big-fix checklist
+  bullet legend [upgrade] Auto build/update/install/test runner
   bullet test             Run built-in self-test
   bullet config KEY [MODEL] [BASE_URL]
   bullet note TEXT        Save a tiny note
@@ -803,10 +876,11 @@ Usage:
 
 Env:
   BULLET_OFFLINE=1/true   Force offline answers
+  BULLET_LEGEND_UPGRADE=1 Auto-run package upgrade in legend mode
   BULLET_API_KEY, BULLET_MODEL, BULLET_API_BASE, BULLET_HOME
 
 Mini shell commands:
-  /ask TEXT, /chat TEXT, /offline TEXT, /agi TEXT, /fix TEXT, /bigfix, /test, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
+  /ask TEXT, /chat TEXT, /offline TEXT, /agi TEXT, /fix TEXT, /legend, /bigfix, /test, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
 EOF
 }
 
@@ -829,6 +903,9 @@ mini_shell() {
       /agi\ remember\ *) agi_cmd remember "${line#/agi remember }" ;;
       /agi\ *) agi_goal "${line#/agi }" ;;
       /fix\ *) fix_cmd "${line#/fix }" ;;
+      /legend|/auto) legend_cmd ;;
+      /legend\ *) legend_cmd "${line#/legend }" ;;
+      /auto\ *) legend_cmd "${line#/auto }" ;;
       /bigfix|/big-fix) fix_cmd big ;;
       /test) self_test ;;
       /note\ *) add_note "${line#/note }" ;;
@@ -850,6 +927,8 @@ case "$cmd" in
   chat|bot) chat_cmd "$@" ;;
   agi|agent) agi_cmd "$@" ;;
   fix|repair) fix_cmd "$@" ;;
+  legend|auto|autofix) legend_cmd "$@" ;;
+  upgrade|update|build|all) legend_cmd "$cmd" "$@" ;;
   bigfix|big-fix|fixall) fix_cmd big ;;
   test|selftest|check) self_test ;;
   config) save_config "$@" ;;
