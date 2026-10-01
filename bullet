@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# Bullet - tiny Termux AI OS shell
+# Bullet - tiny Termux AI CLI shell
 # Offline first. Optional online AI via OpenAI-compatible API.
 
 set -u
-VERSION="0.5.0"
+VERSION="0.5.1"
 DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
 CONFIG="$DATA_DIR/config"
 NOTES="$DATA_DIR/notes.md"
@@ -246,7 +246,7 @@ ai() {
   fi
   command -v curl >/dev/null 2>&1 || { printf 'curl is required for online AI. In Termux: pkg install curl\n' >&2; return 127; }
 
-  system='You are Bullet, a tiny Termux AI OS assistant. Be concise, practical, and safe. Prefer commands that work in Termux. Warn before destructive commands.'
+  system='You are Bullet, a tiny Termux AI CLI assistant. Be concise, practical, and safe. Prefer commands that work in Termux. Warn before destructive commands.'
   eprompt=$(json_escape "$prompt")
   esystem=$(json_escape "$system")
   emodel=$(json_escape "$MODEL")
@@ -751,7 +751,7 @@ install_self() {
 
 usage() {
   cat <<EOF
-Bullet - mini Termux AI OS (${VERSION})
+Bullet - mini Termux AI CLI (${VERSION})
 
 Usage:
   bullet                  Start mini shell
@@ -782,7 +782,7 @@ EOF
 }
 
 mini_shell() {
-  printf 'Bullet mini OS. Type /help or /exit. Plain text asks AI/offline recipes.\n'
+  printf 'Bullet mini shell. Type /help or /exit. Plain text asks AI/offline recipes.\n'
   while :; do
     printf 'bullet> '
     IFS= read -r line || break

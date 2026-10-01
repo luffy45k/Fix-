@@ -1,6 +1,6 @@
-# Bullet Termux AI OS (mini)
+# Bullet Termux AI CLI (mini)
 
-A tiny **offline-first AI OS-style shell for Termux**. It stays small: one POSIX `sh` script, no heavy framework, and no internet is required for built-in offline recipes.
+A tiny **offline-first AI CLI shell for Termux**. It stays small: one POSIX `sh` script, no heavy framework, and no internet is required for built-in offline recipes.
 
 ## What it does
 
