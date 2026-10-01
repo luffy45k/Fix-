@@ -3,7 +3,7 @@
 # Offline first. Optional online AI via OpenAI-compatible API.
 
 set -u
-VERSION="0.3.0"
+VERSION="0.4.0"
 DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
 CONFIG="$DATA_DIR/config"
 NOTES="$DATA_DIR/notes.md"
@@ -496,12 +496,130 @@ doctor() {
   command -v jq >/dev/null 2>&1 && printf 'OK jq: %s\n' "$(command -v jq)" || printf 'OPT jq (better online JSON parsing; Termux: pkg install jq)\n'
 }
 
+
+self_test() {
+  old_data="$DATA_DIR"
+  old_config="$CONFIG"
+  old_notes="$NOTES"
+  old_mem="$AGI_MEM"
+  old_tasks="$AGI_TASKS"
+  tmp="${TMPDIR:-/tmp}/bullet-test-$$"
+  rm -rf "$tmp" 2>/dev/null || true
+  mkdirp "$tmp" || { printf 'FAIL create temp dir\n' >&2; return 1; }
+
+  DATA_DIR="$tmp"
+  CONFIG="$DATA_DIR/config"
+  NOTES="$DATA_DIR/notes.md"
+  AGI_MEM="$DATA_DIR/agi-memory.md"
+  AGI_TASKS="$DATA_DIR/agi-tasks.md"
+  fail=0
+
+  printf 'Bullet self-test (%s)\n' "$VERSION"
+
+  [ -n "$VERSION" ] && printf 'OK version\n' || { printf 'FAIL version\n'; fail=$((fail + 1)); }
+  offline_ai help >/dev/null 2>&1 && printf 'OK offline recipes\n' || { printf 'FAIL offline recipes\n'; fail=$((fail + 1)); }
+  agi_goal "test offline AGI" >/dev/null 2>&1 && [ -s "$AGI_MEM" ] && [ -s "$AGI_TASKS" ] && printf 'OK AGI plan/memory\n' || { printf 'FAIL AGI plan/memory\n'; fail=$((fail + 1)); }
+  add_note "test note" >/dev/null 2>&1 && [ -s "$NOTES" ] && printf 'OK notes\n' || { printf 'FAIL notes\n'; fail=$((fail + 1)); }
+  show_sys >/dev/null 2>&1 && printf 'OK sys\n' || { printf 'FAIL sys\n'; fail=$((fail + 1)); }
+
+  DATA_DIR="$old_data"
+  CONFIG="$old_config"
+  NOTES="$old_notes"
+  AGI_MEM="$old_mem"
+  AGI_TASKS="$old_tasks"
+  rm -rf "$tmp" 2>/dev/null || true
+
+  if [ "$fail" -eq 0 ]; then
+    printf 'PASS all tests\n'
+    return 0
+  fi
+  printf 'FAIL %s test(s)\n' "$fail"
+  return "$fail"
+}
+
+fix_cmd() {
+  topic="$*"
+  p=$(printf '%s' "$topic" | tr '[:upper:]' '[:lower:]')
+  case "$p" in
+    ''|help|-h|--help)
+      cat <<EOF
+Bullet Fix mode - safe Termux repair helper
+
+Use:
+  bullet fix big          Run self-test and print safe repair checklist
+  bullet fix path         Fix/diagnose "bullet: not found"
+  bullet fix install      Reinstall bullet to \$PREFIX/bin
+  bullet fix storage      Storage cleanup plan
+  bullet fix permission   Android storage permission plan
+  bullet fix git          Git/repo checks
+  bullet test             Run built-in self-test
+
+Fix mode prints safe commands first. It does not delete personal files.
+EOF
+      ;;
+    *big*|*all*|*termux*)
+      printf 'Bullet BIG FIX (safe)\n\n'
+      self_test
+      printf '\nSafe checklist:\n'
+      printf '  1. Refresh shell command cache: hash -r\n'
+      printf '  2. Check install path: command -v bullet\n'
+      printf '  3. Reinstall if needed: sh install-termux.sh\n'
+      printf '  4. Check mode/system: bullet doctor\n'
+      printf '  5. Run offline AGI: bullet agi "fix my Termux"\n'
+      printf '\nCopy-paste one command:\n'
+      printf '  hash -r && bullet test && bullet doctor && bullet agi "fix my Termux"\n'
+      ;;
+    *path*|*not\ found*|*command*)
+      cat <<EOF
+Fix: bullet command not found
+Run:
+  hash -r
+  command -v bullet
+If empty, reinstall:
+  cd Fix-
+  sh install-termux.sh
+Termux normal install path:
+  /data/data/com.termux/files/usr/bin/bullet
+EOF
+      ;;
+    *install*|*reinstall*)
+      install_self
+      ;;
+    *storage*|*space*|*clean*)
+      offline_ai "storage clean"
+      ;;
+    *permission*|*sdcard*|*download*)
+      offline_ai "storage permission"
+      ;;
+    *git*|*repo*|*pull*)
+      cat <<EOF
+Fix: Git/repo checks
+Run inside the repo:
+  pwd
+  git status --short
+  git branch --show-current
+  git pull
+If you need this branch:
+  git fetch origin arena/01a0f681-fix
+  git checkout arena/01a0f681-fix
+EOF
+      ;;
+    *)
+      printf 'Fix plan for: %s\n\n' "$topic"
+      agi_plan "fix $topic"
+      ;;
+  esac
+}
+
 install_self() {
   dest="${PREFIX:-$HOME/.local}/bin"
   mkdirp "$dest"
   cp "$0" "$dest/bullet"
   chmod +x "$dest/bullet"
+  hash -r 2>/dev/null || true
   printf 'Installed to %s/bullet\n' "$dest"
+  printf 'Run: bullet test\n'
+  printf 'Run: bullet doctor\n'
   printf 'If needed, add to PATH: export PATH="%s:$PATH"\n' "$dest"
 }
 
@@ -516,6 +634,9 @@ Usage:
   bullet agi GOAL         Offline AGI-style goal planner and memory
   bullet agi tasks        Show saved AGI goals
   bullet agi memory       Show AGI memory
+  bullet fix TOPIC        Safe Termux fix/checklist mode
+  bullet bigfix           Run big-fix checklist
+  bullet test             Run built-in self-test
   bullet config KEY [MODEL] [BASE_URL]
   bullet note TEXT        Save a tiny note
   bullet notes            Show notes
@@ -529,7 +650,7 @@ Env:
   BULLET_API_KEY, BULLET_MODEL, BULLET_API_BASE, BULLET_HOME
 
 Mini shell commands:
-  /ask TEXT, /offline TEXT, /agi TEXT, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
+  /ask TEXT, /offline TEXT, /agi TEXT, /fix TEXT, /bigfix, /test, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
 EOF
 }
 
@@ -548,6 +669,9 @@ mini_shell() {
       /agi\ tasks) agi_cmd tasks ;;
       /agi\ remember\ *) agi_cmd remember "${line#/agi remember }" ;;
       /agi\ *) agi_goal "${line#/agi }" ;;
+      /fix\ *) fix_cmd "${line#/fix }" ;;
+      /bigfix|/big-fix) fix_cmd big ;;
+      /test) self_test ;;
       /note\ *) add_note "${line#/note }" ;;
       /notes) show_notes ;;
       /run\ *) sh -c "${line#/run }" ;;
@@ -565,6 +689,9 @@ case "$cmd" in
   ask|a) ai "$@" ;;
   offline|off) offline_ai "$@" ;;
   agi|agent) agi_cmd "$@" ;;
+  fix|repair) fix_cmd "$@" ;;
+  bigfix|big-fix|fixall) fix_cmd big ;;
+  test|selftest|check) self_test ;;
   config) save_config "$@" ;;
   note) add_note "$@" ;;
   notes) show_notes ;;

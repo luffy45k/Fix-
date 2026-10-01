@@ -6,6 +6,8 @@ A tiny **offline-first AI OS-style shell for Termux**. It stays small: one POSIX
 
 - `bullet offline "..."` gives local Termux help from built-in recipes, no network/model/key.
 - `bullet agi "GOAL"` runs **AGI mode**: a tiny offline Autonomous Goal Interface that plans, stores memory, and tracks goals.
+- `bullet fix big` or `bullet bigfix` runs a safe big-fix checklist plus self-test.
+- `bullet test` runs the built-in offline self-test.
 - `bullet ask "..."` uses offline recipes by default until you configure an API.
 - `BULLET_OFFLINE=1 bullet ask "..."` forces offline mode even if API config exists.
 - `bullet` opens a mini command shell for prompts and phone/Linux helpers.
@@ -18,25 +20,29 @@ A tiny **offline-first AI OS-style shell for Termux**. It stays small: one POSIX
 
 ## Install on Termux
 
-Offline/basic install:
-
-```sh
-sh install-termux.sh
-bullet doctor
-```
-
-Optional online AI dependencies:
-
 ```sh
 pkg update
-pkg install curl
+pkg install git
+
+git clone -b arena/01a0f681-fix https://github.com/luffy45k/Fix-.git
+cd Fix-
+sh install-termux.sh
+bullet test
+bullet doctor
 ```
 
 Or run without installing:
 
 ```sh
 chmod +x ./bullet
+./bullet test
 ./bullet doctor
+```
+
+## One-command install + big fix
+
+```sh
+pkg update -y && pkg install git -y && { [ -d Fix- ] || git clone -b arena/01a0f681-fix https://github.com/luffy45k/Fix-.git; } && cd Fix- && git fetch origin arena/01a0f681-fix && git checkout arena/01a0f681-fix && git pull --ff-only origin arena/01a0f681-fix && sh install-termux.sh && hash -r && bullet fix big
 ```
 
 ## Run offline
@@ -71,6 +77,21 @@ AGI files are stored in:
 ~/.bullet/agi-tasks.md
 ```
 
+## Fix mode
+
+```sh
+bullet fix big
+bullet bigfix
+bullet fix path
+bullet fix install
+bullet fix storage
+bullet fix permission
+bullet fix git
+bullet test
+```
+
+Fix mode prints safe commands first and does not delete personal files.
+
 ## Configure optional online/local AI
 
 OpenAI-compatible cloud API:
@@ -103,6 +124,9 @@ Commands inside the shell:
 /agi remember TEXT  save AGI memory
 /agi tasks          show saved AGI goals
 /agi memory         show AGI memory
+/fix TEXT           safe fix/checklist mode
+/bigfix            run big-fix checklist
+/test               run self-test
 /note TEXT          save a note
 /notes              show notes
 /run COMMAND        run shell command
@@ -116,5 +140,5 @@ Commands inside the shell:
 - Main script: `bullet`
 - Installer: `install-termux.sh`
 - Runtime data: `~/.bullet/`
-- No required runtime dependency for offline recipes or AGI mode.
+- No required runtime dependency for offline recipes, AGI mode, fix mode, or self-test.
 - Optional extras: `curl` for online AI, `jq` for better online JSON parsing.
