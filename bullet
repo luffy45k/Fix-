@@ -3,10 +3,11 @@
 # Offline first. Optional online AI via OpenAI-compatible API.
 
 set -u
-VERSION="0.4.0"
+VERSION="0.5.0"
 DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
 CONFIG="$DATA_DIR/config"
 NOTES="$DATA_DIR/notes.md"
+CHAT_LOG="$DATA_DIR/chat-history.md"
 AGI_MEM="$DATA_DIR/agi-memory.md"
 AGI_TASKS="$DATA_DIR/agi-tasks.md"
 DEFAULT_BASE="https://api.openai.com/v1"
@@ -68,9 +69,22 @@ Try:
   bullet offline "python setup"
   bullet offline "git setup"
   bullet offline "find large files"
+  bullet chat
+  bullet chat "hello"
   bullet agi "make my Termux faster"
   bullet note "idea" && bullet notes
 No internet, key, Python, or model is required.
+EOF
+      ;;
+    hello|hello\ *|hi|hi\ *|hey|hey\ *|*chatbot*|*chat\ bot*)
+      cat <<EOF
+Hi, I am Bullet AI Chat Bot.
+I can chat offline using built-in Termux recipes, or online if you configure an OpenAI-compatible API.
+Try:
+  bullet chat "storage clean"
+  bullet chat "backup home"
+  bullet chat history
+  bullet agi "plan my Termux setup"
 EOF
       ;;
     *agi*|*agent*|*goal*)
@@ -475,6 +489,113 @@ agi_cmd() {
   esac
 }
 
+
+chat_usage() {
+  cat <<EOF
+Bullet AI Chat Bot
+
+Usage:
+  bullet chat                 Start interactive AI chat bot
+  bullet chat TEXT            Send one message to the bot
+  bullet chat history         Show saved chat history
+  bullet chat clear           Clear saved chat history
+
+Inside chat:
+  /help, /history, /clear, /sys, /agi GOAL, /note TEXT, /offline TEXT, /exit
+
+History file:
+  $CHAT_LOG
+EOF
+}
+
+recent_chat_history() {
+  [ -f "$CHAT_LOG" ] || return 0
+  if command -v tail >/dev/null 2>&1; then
+    tail -60 "$CHAT_LOG" 2>/dev/null || true
+  else
+    cat "$CHAT_LOG" 2>/dev/null || true
+  fi
+}
+
+show_chat_history() {
+  [ -s "$CHAT_LOG" ] && cat "$CHAT_LOG" || printf 'No chat history yet.\n'
+}
+
+clear_chat_history() {
+  mkdirp "$DATA_DIR"
+  : > "$CHAT_LOG"
+  printf 'Chat history cleared.\n'
+}
+
+chat_ask() {
+  msg="$*"
+  [ -n "$msg" ] || { printf 'Chat message?\n' >&2; return 2; }
+  mkdirp "$DATA_DIR"
+  now=$(date '+%Y-%m-%d %H:%M')
+  hist=$(recent_chat_history)
+  prompt=$(cat <<EOF
+You are Bullet AI Chat Bot running in Termux.
+Be concise, practical, friendly, and safe. Prefer offline Termux commands when possible.
+Recent chat history:
+$hist
+
+User message:
+$msg
+EOF
+)
+
+  printf '\n## %s\nUser: %s\n\n' "$now" "$msg" >> "$CHAT_LOG"
+  if [ "$OFFLINE" = "1" ] || { [ -z "$API_KEY" ] && [ "$API_BASE" = "$DEFAULT_BASE" ]; }; then
+    reply=$(offline_ai "$msg" 2>&1)
+  else
+    reply=$(ai "$prompt" 2>&1)
+  fi
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    printf 'bot> AI error. Try offline mode: bullet offline "%s"\n' "$msg"
+    printf 'Bot error: %s\n\n' "$reply" >> "$CHAT_LOG"
+    return "$status"
+  fi
+  printf '%s\n' "$reply" | sed 's/^/bot> /'
+  printf 'Bot: %s\n\n' "$reply" >> "$CHAT_LOG"
+}
+
+chat_bot() {
+  mkdirp "$DATA_DIR"
+  printf 'Bullet AI Chat Bot. Type /help or /exit. History: %s\n' "$CHAT_LOG"
+  while :; do
+    printf 'you> '
+    IFS= read -r line || break
+    case "$line" in
+      '') ;;
+      /exit|exit|quit|/quit) break ;;
+      /help) chat_usage ;;
+      /history) show_chat_history ;;
+      /clear) clear_chat_history ;;
+      /sys) show_sys ;;
+      /agi\ *) agi_goal "${line#/agi }" ;;
+      /note\ *) add_note "${line#/note }" ;;
+      /offline\ *) offline_ai "${line#/offline }" ;;
+      /*) printf 'Unknown chat command. Type /help.\n' >&2 ;;
+      *) chat_ask "$line" ;;
+    esac
+  done
+}
+
+chat_cmd() {
+  if [ $# -eq 0 ]; then
+    chat_bot
+    return
+  fi
+  sub="$1"
+  case "$sub" in
+    help|-h|--help) chat_usage ;;
+    history|hist|log) show_chat_history ;;
+    clear|reset) clear_chat_history ;;
+    *) chat_ask "$@" ;;
+  esac
+}
+
 show_sys() {
   printf 'Bullet %s\n' "$VERSION"
   printf 'Home: %s\n' "$DATA_DIR"
@@ -483,6 +604,7 @@ show_sys() {
   printf 'Base: %s\n' "$API_BASE"
   printf 'Key: %s\n' "$( [ -n "$API_KEY" ] && printf configured || printf missing )"
   printf 'AGI: %s\n' "Autonomous Goal Interface"
+  printf 'Chat: %s\n' "$CHAT_LOG"
   printf '\nSystem:\n'
   uname -a 2>/dev/null || true
   printf '\nStorage:\n'
@@ -501,6 +623,7 @@ self_test() {
   old_data="$DATA_DIR"
   old_config="$CONFIG"
   old_notes="$NOTES"
+  old_chat="$CHAT_LOG"
   old_mem="$AGI_MEM"
   old_tasks="$AGI_TASKS"
   tmp="${TMPDIR:-/tmp}/bullet-test-$$"
@@ -510,6 +633,7 @@ self_test() {
   DATA_DIR="$tmp"
   CONFIG="$DATA_DIR/config"
   NOTES="$DATA_DIR/notes.md"
+  CHAT_LOG="$DATA_DIR/chat-history.md"
   AGI_MEM="$DATA_DIR/agi-memory.md"
   AGI_TASKS="$DATA_DIR/agi-tasks.md"
   fail=0
@@ -520,11 +644,13 @@ self_test() {
   offline_ai help >/dev/null 2>&1 && printf 'OK offline recipes\n' || { printf 'FAIL offline recipes\n'; fail=$((fail + 1)); }
   agi_goal "test offline AGI" >/dev/null 2>&1 && [ -s "$AGI_MEM" ] && [ -s "$AGI_TASKS" ] && printf 'OK AGI plan/memory\n' || { printf 'FAIL AGI plan/memory\n'; fail=$((fail + 1)); }
   add_note "test note" >/dev/null 2>&1 && [ -s "$NOTES" ] && printf 'OK notes\n' || { printf 'FAIL notes\n'; fail=$((fail + 1)); }
+  chat_ask "test storage clean" >/dev/null 2>&1 && [ -s "$CHAT_LOG" ] && printf 'OK chat bot\n' || { printf 'FAIL chat bot\n'; fail=$((fail + 1)); }
   show_sys >/dev/null 2>&1 && printf 'OK sys\n' || { printf 'FAIL sys\n'; fail=$((fail + 1)); }
 
   DATA_DIR="$old_data"
   CONFIG="$old_config"
   NOTES="$old_notes"
+  CHAT_LOG="$old_chat"
   AGI_MEM="$old_mem"
   AGI_TASKS="$old_tasks"
   rm -rf "$tmp" 2>/dev/null || true
@@ -631,6 +757,7 @@ Usage:
   bullet                  Start mini shell
   bullet ask TEXT         Ask AI; offline fallback if no API is configured
   bullet offline TEXT     Force local offline recipes, no network
+  bullet chat [TEXT]      Interactive AI chat bot, or one message
   bullet agi GOAL         Offline AGI-style goal planner and memory
   bullet agi tasks        Show saved AGI goals
   bullet agi memory       Show AGI memory
@@ -650,7 +777,7 @@ Env:
   BULLET_API_KEY, BULLET_MODEL, BULLET_API_BASE, BULLET_HOME
 
 Mini shell commands:
-  /ask TEXT, /offline TEXT, /agi TEXT, /fix TEXT, /bigfix, /test, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
+  /ask TEXT, /chat TEXT, /offline TEXT, /agi TEXT, /fix TEXT, /bigfix, /test, /note TEXT, /notes, /run COMMAND, /sys, /help, /exit
 EOF
 }
 
@@ -665,6 +792,9 @@ mini_shell() {
       /help) usage ;;
       /ask\ *) ai "${line#/ask }" ;;
       /offline\ *) offline_ai "${line#/offline }" ;;
+      /chat|/bot) chat_bot ;;
+      /chat\ *) chat_cmd "${line#/chat }" ;;
+      /bot\ *) chat_cmd "${line#/bot }" ;;
       /agi\ memory) agi_cmd memory ;;
       /agi\ tasks) agi_cmd tasks ;;
       /agi\ remember\ *) agi_cmd remember "${line#/agi remember }" ;;
@@ -688,6 +818,7 @@ case "$cmd" in
   shell) mini_shell ;;
   ask|a) ai "$@" ;;
   offline|off) offline_ai "$@" ;;
+  chat|bot) chat_cmd "$@" ;;
   agi|agent) agi_cmd "$@" ;;
   fix|repair) fix_cmd "$@" ;;
   bigfix|big-fix|fixall) fix_cmd big ;;

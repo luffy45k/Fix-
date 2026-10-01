@@ -5,6 +5,8 @@ A tiny **offline-first AI OS-style shell for Termux**. It stays small: one POSIX
 ## What it does
 
 - `bullet offline "..."` gives local Termux help from built-in recipes, no network/model/key.
+- `bullet chat` starts an interactive **AI chat bot** with local history.
+- `bullet chat "TEXT"` sends one bot message.
 - `bullet agi "GOAL"` runs **AGI mode**: a tiny offline Autonomous Goal Interface that plans, stores memory, and tracks goals.
 - `bullet fix big` or `bullet bigfix` runs a safe big-fix checklist plus self-test.
 - `bullet test` runs the built-in offline self-test.
@@ -56,6 +58,48 @@ BULLET_OFFLINE=1 bullet ask "python setup"
 ```
 
 Offline recipes include storage cleanup, backups, file search, storage permissions, Python, Git, packages, processes, network checks, and Termux:API hints.
+
+## AI chat bot
+
+Start the bot:
+
+```sh
+bullet chat
+```
+
+Send one message:
+
+```sh
+bullet chat "hello"
+bullet chat "storage clean"
+bullet chat "backup home"
+```
+
+Manage history:
+
+```sh
+bullet chat history
+bullet chat clear
+```
+
+Inside chat:
+
+```text
+/help
+/history
+/clear
+/sys
+/agi make my Termux faster
+/note remember this
+/offline storage clean
+/exit
+```
+
+Chat history is stored in:
+
+```text
+~/.bullet/chat-history.md
+```
 
 ## AGI mode
 
@@ -119,6 +163,7 @@ Commands inside the shell:
 
 ```text
 /ask TEXT           ask AI; offline fallback if no API is configured
+/chat TEXT          send one chat-bot message
 /offline TEXT       force local offline recipe
 /agi TEXT           AGI goal planner
 /agi remember TEXT  save AGI memory
@@ -140,5 +185,5 @@ Commands inside the shell:
 - Main script: `bullet`
 - Installer: `install-termux.sh`
 - Runtime data: `~/.bullet/`
-- No required runtime dependency for offline recipes, AGI mode, fix mode, or self-test.
+- No required runtime dependency for offline recipes, AI chat bot, AGI mode, fix mode, or self-test.
 - Optional extras: `curl` for online AI, `jq` for better online JSON parsing.
