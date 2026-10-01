@@ -3,7 +3,7 @@
 # Offline first. Optional online AI via OpenAI-compatible API.
 
 set -u
-VERSION="0.5.1"
+VERSION="0.5.2"
 DATA_DIR="${BULLET_HOME:-$HOME/.bullet}"
 CONFIG="$DATA_DIR/config"
 NOTES="$DATA_DIR/notes.md"
@@ -23,13 +23,22 @@ OFFLINE="${BULLET_OFFLINE:-0}"
 
 mkdirp() { [ -d "$1" ] || mkdir -p "$1"; }
 
+is_on() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on|offline) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+use_offline_ai() {
+  is_on "$OFFLINE" || { [ -z "$API_KEY" ] && [ "$API_BASE" = "$DEFAULT_BASE" ]; }
+}
+
 mode_text() {
-  if [ "$OFFLINE" = "1" ]; then
+  if use_offline_ai; then
     printf offline
-  elif [ -n "$API_KEY" ] || [ "$API_BASE" != "$DEFAULT_BASE" ]; then
-    printf online
   else
-    printf offline
+    printf online
   fi
 }
 
@@ -240,7 +249,7 @@ ai() {
   prompt="$*"
   [ -n "$prompt" ] || { printf 'Ask what?\n' >&2; return 2; }
 
-  if [ "$OFFLINE" = "1" ] || { [ -z "$API_KEY" ] && [ "$API_BASE" = "$DEFAULT_BASE" ]; }; then
+  if use_offline_ai; then
     offline_ai "$prompt"
     return 0
   fi
@@ -545,7 +554,7 @@ EOF
 )
 
   printf '\n## %s\nUser: %s\n\n' "$now" "$msg" >> "$CHAT_LOG"
-  if [ "$OFFLINE" = "1" ] || { [ -z "$API_KEY" ] && [ "$API_BASE" = "$DEFAULT_BASE" ]; }; then
+  if use_offline_ai; then
     reply=$(offline_ai "$msg" 2>&1)
   else
     reply=$(ai "$prompt" 2>&1)
@@ -625,6 +634,9 @@ self_test() {
   old_notes="$NOTES"
   old_chat="$CHAT_LOG"
   old_mem="$AGI_MEM"
+  old_offline="$OFFLINE"
+  old_api_key="$API_KEY"
+  old_api_base="$API_BASE"
   old_tasks="$AGI_TASKS"
   tmp="${TMPDIR:-/tmp}/bullet-test-$$"
   rm -rf "$tmp" 2>/dev/null || true
@@ -636,6 +648,9 @@ self_test() {
   CHAT_LOG="$DATA_DIR/chat-history.md"
   AGI_MEM="$DATA_DIR/agi-memory.md"
   AGI_TASKS="$DATA_DIR/agi-tasks.md"
+  OFFLINE=1
+  API_KEY=""
+  API_BASE="$DEFAULT_BASE"
   fail=0
 
   printf 'Bullet self-test (%s)\n' "$VERSION"
@@ -653,6 +668,9 @@ self_test() {
   CHAT_LOG="$old_chat"
   AGI_MEM="$old_mem"
   AGI_TASKS="$old_tasks"
+  OFFLINE="$old_offline"
+  API_KEY="$old_api_key"
+  API_BASE="$old_api_base"
   rm -rf "$tmp" 2>/dev/null || true
 
   if [ "$fail" -eq 0 ]; then
@@ -701,9 +719,10 @@ Fix: bullet command not found
 Run:
   hash -r
   command -v bullet
-If empty, reinstall:
-  cd Fix-
+If empty, reinstall from the repo folder:
   sh install-termux.sh
+If you are outside the repo:
+  cd Fix- && sh install-termux.sh
 Termux normal install path:
   /data/data/com.termux/files/usr/bin/bullet
 EOF
@@ -739,11 +758,21 @@ EOF
 
 install_self() {
   dest="${PREFIX:-$HOME/.local}/bin"
-  mkdirp "$dest"
-  cp "$0" "$dest/bullet"
-  chmod +x "$dest/bullet"
+  src="$0"
+  case "$src" in
+    */*) ;;
+    *) src=$(command -v "$src" 2>/dev/null || printf '%s' "$src") ;;
+  esac
+  [ -f "$src" ] || { printf 'Cannot find Bullet source script: %s\n' "$src" >&2; return 1; }
+
+  mkdirp "$dest" || return 1
+  target="$dest/bullet"
+  if [ "$src" != "$target" ] && ! cmp -s "$src" "$target" 2>/dev/null; then
+    cp "$src" "$target" || return 1
+  fi
+  chmod +x "$target" || return 1
   hash -r 2>/dev/null || true
-  printf 'Installed to %s/bullet\n' "$dest"
+  printf 'Installed to %s\n' "$target"
   printf 'Run: bullet test\n'
   printf 'Run: bullet doctor\n'
   printf 'If needed, add to PATH: export PATH="%s:$PATH"\n' "$dest"
@@ -773,7 +802,7 @@ Usage:
   bullet install          Copy to \$PREFIX/bin/bullet
 
 Env:
-  BULLET_OFFLINE=1        Force offline answers
+  BULLET_OFFLINE=1/true   Force offline answers
   BULLET_API_KEY, BULLET_MODEL, BULLET_API_BASE, BULLET_HOME
 
 Mini shell commands:
