@@ -1,0 +1,8 @@
+{
+  "appId": "com.tuxlite.workspace",
+  "appName": "Termux GUI Lite",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

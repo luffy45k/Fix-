@@ -1,0 +1,13 @@
+# Dependency and generated web bundle
+node_modules/
+www/
+
+# Android / Capacitor build output
+android/.gradle/
+android/build/
+android/app/build/
+*.apk
+*.aab
+
+# OS files
+.DS_Store
