@@ -2,9 +2,6 @@
 # This file lives in ~/.config/tuxlite-x11/openbox, so it does not replace
 # a user's normal ~/.config/openbox desktop configuration.
 
-# Keep the desktop visually quiet and low-overhead.
-xsetroot -solid "#08100e" &
-
-# Open one compact terminal at session start. Close it and use the Openbox menu
-# (long-press/right-click depending on Termux:X11 input mode) to open another.
-aterm -title "TuxLite shell" -fg "#eaf6ec" -bg "#0d1814" -geometry 86x24+12+36 &
+# tuxlite-session applies the selected desktop background before Openbox starts.
+# Start one compact terminal using the active Theme Studio palette.
+tuxlite-terminal -title "TuxLite shell" -geometry 86x24+12+36 &

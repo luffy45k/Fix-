@@ -1,0 +1,28 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Launches aterm using the active TuxLite Theme Studio palette.
+set -Eeuo pipefail
+
+THEME_FILE="${HOME}/.config/tuxlite-x11/theme.env"
+
+read_theme_color() {
+  local key="$1" fallback="$2" value
+  value=""
+  if [[ -r "${THEME_FILE}" ]]; then
+    value="$(awk -F= -v key="${key}" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "${THEME_FILE}" 2>/dev/null || true)"
+  fi
+  if [[ "${value}" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    printf '%s' "${value}"
+  else
+    printf '%s' "${fallback}"
+  fi
+}
+
+command -v aterm >/dev/null 2>&1 || { printf 'aterm is missing. Re-run the TuxLite installer.\n' >&2; exit 1; }
+
+terminal_bg="$(read_theme_color TUXLITE_TERMINAL_BG '#0d1814')"
+terminal_fg="$(read_theme_color TUXLITE_TERMINAL_FG '#eaf6ec')"
+terminal_cursor="$(read_theme_color TUXLITE_ACCENT '#d8ff69')"
+
+# aterm is an rxvt derivative; -cr sets the cursor color and makes the accent
+# meaningful without adding a heavyweight terminal emulator.
+exec aterm -fg "${terminal_fg}" -bg "${terminal_bg}" -cr "${terminal_cursor}" "$@"

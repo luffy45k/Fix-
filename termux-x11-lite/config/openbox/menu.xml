@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="TuxLite X11">
+    <item label="TuxLite Theme Studio">
+      <action name="Execute"><execute>tuxlite-theme</execute></action>
+    </item>
     <item label="TuxLite App Store">
       <action name="Execute"><execute>tuxlite-store</execute></action>
     </item>
     <item label="Terminal">
-      <action name="Execute"><execute>aterm -title "TuxLite shell" -fg "#eaf6ec" -bg "#0d1814"</execute></action>
+      <action name="Execute"><execute>tuxlite-terminal -title "TuxLite shell"</execute></action>
     </item>
     <item label="File manager (if installed)">
       <action name="Execute"><execute>thunar</execute></action>

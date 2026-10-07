@@ -14,7 +14,7 @@ It deliberately does **not** install a Debian/Ubuntu rootfs, PRoot distro, VNC s
 | `dbus` | Session bus used by graphical applications |
 | `xorg-xsetroot` | Low-overhead desktop background setup |
 | `procps` | Reliable `pgrep` / `pkill` commands for session diagnostics and shutdown |
-| `yad` *(optional)* | GTK dialog toolkit used by the graphical TuxLite Store |
+| `yad` *(optional)* | GTK dialog toolkit used by the graphical TuxLite Store and Theme Studio |
 
 The exact download and installed size depends on the active Termux mirror and package versions. The installer does not make a misleading fixed-size promise; `tuxlite-x11-status` reports the direct installed-package total, and `du -sh "$PREFIX"` measures the full Termux environment on the phone.
 
@@ -39,11 +39,11 @@ pkg update -y
 pkg install -y git
 git clone --branch arena/5609cb03-fix https://github.com/luffy45k/Fix-.git
 cd Fix-/termux-x11-lite
-# Add --with-store to install the graphical App Store now.
+# Add --with-store to install the graphical App Store and Theme Studio now.
 bash install.sh --with-store
 ```
 
-Omit `--with-store` for the smallest possible base; `tuxlite-store` can install its optional GUI toolkit later.
+Omit `--with-store` for the smallest possible base; the Store and Theme Studio can use the optional GUI toolkit later with `pkg install -y yad`.
 
 The installer enables `x11-repo`, installs the minimal GUI packages, and creates these Termux commands:
 
@@ -52,7 +52,9 @@ tuxlite-x11
 tuxlite-x11-stop
 tuxlite-x11-status
 tuxlite-session
+tuxlite-terminal
 tuxlite-store
+tuxlite-theme
 ```
 
 It writes Openbox configuration only to:
@@ -98,10 +100,37 @@ You can also stop the Android X11 activity from its notification drawer.
 
 ## Using the desktop
 
-- A compact `aterm` terminal opens automatically.
+- A compact themed `aterm` terminal opens automatically.
 - Use the Termux:X11 touchpad gestures for click, right click, scrolling, and the extra-keys bar.
 - Long-press/right-click on the desktop opens the TuxLite Openbox menu.
-- The menu can open another terminal, reconfigure Openbox, or exit the session.
+- The menu can open Theme Studio, the App Store, a terminal, reconfigure Openbox, or exit the session.
+
+## TuxLite Theme Studio — custom theme GUI
+
+`TuxLite Theme Studio` is a small YAD-based GUI for changing the Openbox desktop background and the color palette used by new TuxLite terminals.
+
+```bash
+tuxlite-theme
+```
+
+Install the shared GUI toolkit during setup with `bash install.sh --with-theme` (an alias for `--with-store`), or later with `pkg install -y yad`.
+
+Built-in low-glare palettes are **Forest Terminal**, **Tidal Blue**, **Orbit Plum**, and **Solar Sand**. The **Custom colors** button lets you choose a desktop background, terminal background, terminal text color, and terminal cursor accent. The desktop background changes immediately; open a new terminal after applying a palette to use its terminal colors.
+
+You can also apply a preset from a regular Termux shell without opening the GUI:
+
+```bash
+tuxlite-theme --apply ocean
+tuxlite-theme --reset
+```
+
+The selected palette is stored in:
+
+```text
+~/.config/tuxlite-x11/theme.env
+```
+
+It affects only the TuxLite Openbox profile and does not overwrite your normal Openbox configuration.
 
 ## TuxLite Store — graphical App Store
 
@@ -125,7 +154,7 @@ bash install.sh --with-store
 pkg install -y yad
 ```
 
-`yad` is optional because it adds a GTK dialog toolkit. Leave it out if the absolute smallest X11 base is more important than the graphical Store.
+`yad` is optional because it adds a GTK dialog toolkit shared by the Store and Theme Studio. Leave it out if the absolute smallest X11 base is more important than those graphical tools.
 
 ## Optional software
 
@@ -147,6 +176,8 @@ Avoid installing an entire desktop environment if the 700 MB objective is strict
 | Companion app not detected | Install/open the Termux:X11 Android app, then retry `tuxlite-x11`. |
 | Black screen with a cursor | The default already uses the compatibility renderer. Stop it and retry `tuxlite-x11 --legacy-drawing`. |
 | Colours look swapped | Stop the session, then run `tuxlite-x11 --force-bgra`. |
+| Theme Studio or Store says YAD is missing | Run `pkg install -y yad`, then start the GUI again. |
+| Theme menu item is missing after an older install | Re-run `bash install.sh --force-config` to refresh TuxLite's isolated menu and autostart files. |
 | X11 will not stop | Run `tuxlite-x11-stop`, then close the Termux:X11 notification. |
 | Existing Openbox setup | TuxLite uses `~/.config/tuxlite-x11`, not your normal Openbox directory. |
 

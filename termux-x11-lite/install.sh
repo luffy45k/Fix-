@@ -23,7 +23,8 @@ Usage: bash install.sh [options]
 
 Options:
   --force-config   Replace TuxLite's isolated Openbox files.
-  --with-store     Also install the optional YAD-based graphical App Store.
+  --with-store     Also install YAD for the graphical App Store and Theme Studio.
+  --with-theme     Alias for --with-store.
   --skip-packages  Do not install or update Termux packages.
   -h, --help       Show this help.
 
@@ -35,7 +36,7 @@ EOF
 while (($#)); do
   case "$1" in
     --force-config) FORCE_CONFIG=1 ;;
-    --with-store) WITH_STORE=1 ;;
+    --with-store|--with-theme|--with-gui-tools) WITH_STORE=1 ;;
     --skip-packages) SKIP_PACKAGES=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
@@ -65,7 +66,7 @@ if (( ! SKIP_PACKAGES )); then
   packages=(termux-x11-nightly openbox aterm dbus xorg-xsetroot procps)
   if (( WITH_STORE )); then
     packages+=(yad)
-    info "Installing Termux:X11, Openbox, and the optional graphical App Store"
+    info "Installing Termux:X11, Openbox, and optional graphical Store/Theme tools"
   else
     info "Installing Termux:X11, Openbox, aterm, D-Bus, xsetroot, and process tools"
   fi
@@ -82,7 +83,7 @@ say "Installing TuxLite launcher commands"
 mkdir -p "${APP_DATA_DIR}" "${OPENBOX_CONFIG_DIR}" "${PREFIX}/bin"
 cp -f "${PROJECT_DIR}/README.md" "${APP_DATA_DIR}/README.md"
 
-for script in tuxlite-x11 tuxlite-session tuxlite-x11-stop tuxlite-x11-status tuxlite-store tuxlite-store-action; do
+for script in tuxlite-x11 tuxlite-session tuxlite-x11-stop tuxlite-x11-status tuxlite-store tuxlite-store-action tuxlite-terminal tuxlite-theme; do
   cp -f "${PROJECT_DIR}/bin/${script}" "${PREFIX}/bin/${script}"
   chmod 0755 "${PREFIX}/bin/${script}"
   info "Installed ${PREFIX}/bin/${script}"
@@ -102,6 +103,16 @@ for config in autostart menu.xml; do
   fi
 done
 
+THEME_FILE="${CONFIG_ROOT}/theme.env"
+if [[ -e "${THEME_FILE}" ]]; then
+  # Keep an existing user palette even when --force-config refreshes the menu.
+  info "Keeping existing ${THEME_FILE}"
+else
+  cp -f "${PROJECT_DIR}/config/theme.env" "${THEME_FILE}"
+  chmod 0600 "${THEME_FILE}"
+  info "Wrote ${THEME_FILE}"
+fi
+
 say "TuxLite X11 is ready"
 cat <<EOF
 
@@ -112,12 +123,13 @@ cat <<EOF
 
 Useful commands:
   tuxlite-x11 --fast       Start without legacy drawing fallback
+  tuxlite-theme            Open the graphical Theme Studio
   tuxlite-store            Open the curated graphical App Store
   tuxlite-x11-stop         Stop the X11 activity and server
   tuxlite-x11-status       Check companion, packages, and local profile size
 
-The Store's YAD GUI toolkit is optional. Install it now with --with-store or
-launch tuxlite-store after X11 starts to install it on demand.
+The Store and Theme Studio share the optional YAD GUI toolkit. Install it now
+with --with-store, or later with: pkg install -y yad
 
 This is a direct Termux/Openbox session — no root, PRoot distro, or Linux ISO
 is downloaded. Package download and installed size depends on your Termux mirror.

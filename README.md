@@ -14,6 +14,7 @@ A small, Android-first **Linux workspace UI** designed around the Realme 9 4G fo
 - **Capacitor 8 configuration** so the same UI can be wrapped as an Android app / Play Store AAB.
 - **TuxLite X11 runtime scripts** — a real direct-Termux Openbox desktop using Termux:X11, `aterm`, D-Bus, and no PRoot Linux image. See [termux-x11-lite/README.md](termux-x11-lite/README.md).
 - **TuxLite Store** — an optional real graphical App Store for the Openbox desktop, with a curated Termux package catalog and visible package-manager install/remove terminals.
+- **TuxLite Theme Studio** — an optional real custom theme GUI for Openbox, with four low-glare palettes, custom color selection, and palette-aware TuxLite terminals.
 
 ## Real Termux X11 desktop
 

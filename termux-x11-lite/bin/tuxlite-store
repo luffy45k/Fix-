@@ -34,10 +34,9 @@ esac
 command -v pkg >/dev/null 2>&1 || die "The Termux pkg command is not available."
 
 install_yad_in_terminal() {
-  if command -v aterm >/dev/null 2>&1; then
+  if command -v tuxlite-terminal >/dev/null 2>&1; then
     say "The graphical Store toolkit is not installed. Opening a small installer terminal."
-    aterm -title "TuxLite Store setup" -fg "#eaf6ec" -bg "#0d1814" \
-      -geometry 86x16+16+48 -e bash -lc \
+    tuxlite-terminal -title "TuxLite Store setup" -geometry 86x16+16+48 -e bash -lc \
       'pkg install -y yad; status=$?; printf "\nTuxLite Store setup finished (exit %s).\n" "$status"; read -r -p "Press Enter to close..."' &
     exit 0
   fi
@@ -52,6 +51,7 @@ EOF
 }
 
 command -v yad >/dev/null 2>&1 || install_yad_in_terminal
+command -v tuxlite-terminal >/dev/null 2>&1 || die "tuxlite-terminal is missing. Re-run the TuxLite installer."
 command -v tuxlite-store-action >/dev/null 2>&1 || die "tuxlite-store-action is missing. Re-run the TuxLite installer."
 
 is_installed() {
@@ -140,7 +140,7 @@ while :; do
 
   verb="Installing"
   [[ "${action}" == "uninstall" ]] && verb="Removing"
-  aterm -title "${STORE_TITLE} — ${verb} ${title}" -fg "#eaf6ec" -bg "#0d1814" \
+  tuxlite-terminal -title "${STORE_TITLE} — ${verb} ${title}" \
     -geometry 94x24+18+56 -e tuxlite-store-action "${action}" "${package}" &
   yad --info --title="${STORE_TITLE}" --text="${verb} <b>${title}</b> in a terminal. The package manager will show the real size before it changes your environment."
 done

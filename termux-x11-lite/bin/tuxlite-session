@@ -13,9 +13,15 @@ export XDG_RUNTIME_DIR="${TMPDIR:-${PREFIX}/tmp}/tuxlite-x11-runtime"
 mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 0700 "${XDG_RUNTIME_DIR}"
 
-# This gives a clean X root even if the autostart script is customized later.
+# Restore the Theme Studio desktop color before the Openbox autostart profile opens.
+theme_file="${HOME}/.config/tuxlite-x11/theme.env"
+desktop_bg="#08100e"
+if [[ -r "${theme_file}" ]]; then
+  configured_bg="$(awk -F= '$1 == "TUXLITE_DESKTOP_BG" {sub(/^[^=]*=/, ""); print; exit}' "${theme_file}" 2>/dev/null || true)"
+  [[ "${configured_bg}" =~ ^#[0-9A-Fa-f]{6}$ ]] && desktop_bg="${configured_bg}"
+fi
 if command -v xsetroot >/dev/null 2>&1; then
-  xsetroot -solid '#08100e' || true
+  xsetroot -solid "${desktop_bg}" || true
 fi
 
 if command -v dbus-run-session >/dev/null 2>&1; then
