@@ -10,6 +10,7 @@ CONFIG_ROOT="${HOME}/.config/tuxlite-x11"
 OPENBOX_CONFIG_DIR="${CONFIG_ROOT}/openbox"
 FORCE_CONFIG=0
 SKIP_PACKAGES=0
+WITH_STORE=0
 
 say() { printf '\n\033[1;38;5;155m[%s]\033[0m %s\n' "$APP_NAME" "$*"; }
 info() { printf '  \033[0;37m•\033[0m %s\n' "$*"; }
@@ -22,6 +23,7 @@ Usage: bash install.sh [options]
 
 Options:
   --force-config   Replace TuxLite's isolated Openbox files.
+  --with-store     Also install the optional YAD-based graphical App Store.
   --skip-packages  Do not install or update Termux packages.
   -h, --help       Show this help.
 
@@ -33,6 +35,7 @@ EOF
 while (($#)); do
   case "$1" in
     --force-config) FORCE_CONFIG=1 ;;
+    --with-store) WITH_STORE=1 ;;
     --skip-packages) SKIP_PACKAGES=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
@@ -59,8 +62,14 @@ if (( ! SKIP_PACKAGES )); then
   info "Enabling the Termux X11 repository"
   pkg update -y
   pkg install -y x11-repo
-  info "Installing Termux:X11, Openbox, aterm, D-Bus, xsetroot, and process tools"
-  pkg install -y termux-x11-nightly openbox aterm dbus xorg-xsetroot procps
+  packages=(termux-x11-nightly openbox aterm dbus xorg-xsetroot procps)
+  if (( WITH_STORE )); then
+    packages+=(yad)
+    info "Installing Termux:X11, Openbox, and the optional graphical App Store"
+  else
+    info "Installing Termux:X11, Openbox, aterm, D-Bus, xsetroot, and process tools"
+  fi
+  pkg install -y "${packages[@]}"
 else
   say "Skipping package installation"
 fi
@@ -73,7 +82,7 @@ say "Installing TuxLite launcher commands"
 mkdir -p "${APP_DATA_DIR}" "${OPENBOX_CONFIG_DIR}" "${PREFIX}/bin"
 cp -f "${PROJECT_DIR}/README.md" "${APP_DATA_DIR}/README.md"
 
-for script in tuxlite-x11 tuxlite-session tuxlite-x11-stop tuxlite-x11-status; do
+for script in tuxlite-x11 tuxlite-session tuxlite-x11-stop tuxlite-x11-status tuxlite-store tuxlite-store-action; do
   cp -f "${PROJECT_DIR}/bin/${script}" "${PREFIX}/bin/${script}"
   chmod 0755 "${PREFIX}/bin/${script}"
   info "Installed ${PREFIX}/bin/${script}"
@@ -103,8 +112,12 @@ cat <<EOF
 
 Useful commands:
   tuxlite-x11 --fast       Start without legacy drawing fallback
+  tuxlite-store            Open the curated graphical App Store
   tuxlite-x11-stop         Stop the X11 activity and server
   tuxlite-x11-status       Check companion, packages, and local profile size
+
+The Store's YAD GUI toolkit is optional. Install it now with --with-store or
+launch tuxlite-store after X11 starts to install it on demand.
 
 This is a direct Termux/Openbox session — no root, PRoot distro, or Linux ISO
 is downloaded. Package download and installed size depends on your Termux mirror.

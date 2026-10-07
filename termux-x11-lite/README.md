@@ -14,6 +14,7 @@ It deliberately does **not** install a Debian/Ubuntu rootfs, PRoot distro, VNC s
 | `dbus` | Session bus used by graphical applications |
 | `xorg-xsetroot` | Low-overhead desktop background setup |
 | `procps` | Reliable `pgrep` / `pkill` commands for session diagnostics and shutdown |
+| `yad` *(optional)* | GTK dialog toolkit used by the graphical TuxLite Store |
 
 The exact download and installed size depends on the active Termux mirror and package versions. The installer does not make a misleading fixed-size promise; `tuxlite-x11-status` reports the direct installed-package total, and `du -sh "$PREFIX"` measures the full Termux environment on the phone.
 
@@ -38,16 +39,20 @@ pkg update -y
 pkg install -y git
 git clone --branch arena/5609cb03-fix https://github.com/luffy45k/Fix-.git
 cd Fix-/termux-x11-lite
-bash install.sh
+# Add --with-store to install the graphical App Store now.
+bash install.sh --with-store
 ```
 
-The installer enables `x11-repo`, installs the minimal GUI packages, and creates four Termux commands:
+Omit `--with-store` for the smallest possible base; `tuxlite-store` can install its optional GUI toolkit later.
+
+The installer enables `x11-repo`, installs the minimal GUI packages, and creates these Termux commands:
 
 ```text
 tuxlite-x11
 tuxlite-x11-stop
 tuxlite-x11-status
 tuxlite-session
+tuxlite-store
 ```
 
 It writes Openbox configuration only to:
@@ -97,6 +102,30 @@ You can also stop the Android X11 activity from its notification drawer.
 - Use the Termux:X11 touchpad gestures for click, right click, scrolling, and the extra-keys bar.
 - Long-press/right-click on the desktop opens the TuxLite Openbox menu.
 - The menu can open another terminal, reconfigure Openbox, or exit the session.
+
+## TuxLite Store — graphical App Store
+
+`TuxLite Store` is a small **YAD-based GUI package browser** for the Openbox desktop. Launch it from the Openbox menu or run this after starting X11:
+
+```bash
+tuxlite-store
+```
+
+It has a curated catalog for the lightweight desktop: Thunar, Geany, Feh, NetSurf, Galculator, Xarchiver, Git, Python, Nano, and Htop. Selecting an app opens an `aterm` window where the standard Termux package manager displays the current download and storage details before installation or removal.
+
+The Store does not silently run arbitrary shell text, bundle third-party APKs, or promise inaccurate package sizes. Catalog package names are fixed in the script and package changes are visible in the terminal.
+
+To install the Store GUI now:
+
+```bash
+# During first setup
+bash install.sh --with-store
+
+# Or later, from Termux
+pkg install -y yad
+```
+
+`yad` is optional because it adds a GTK dialog toolkit. Leave it out if the absolute smallest X11 base is more important than the graphical Store.
 
 ## Optional software
 

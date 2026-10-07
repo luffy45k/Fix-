@@ -1,0 +1,146 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# TuxLite Store — a curated, small graphical package browser for Termux:X11.
+# It uses the optional YAD dialog toolkit and delegates all package changes to
+# tuxlite-store-action, which opens visibly in a terminal.
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+STORE_TITLE="TuxLite Store"
+
+usage() {
+  cat <<'EOF'
+Usage: tuxlite-store [--help]
+
+Open the curated Termux:X11 package browser.
+
+The first launch needs the optional `yad` package. If it is missing and an X11
+terminal is available, TuxLite Store opens a terminal that installs it. You can
+also install it manually from Termux:
+
+  pkg install -y yad
+EOF
+}
+
+say() { printf '\033[1;38;5;155m[%s]\033[0m %s\n' "${STORE_TITLE}" "$*"; }
+die() { printf '\033[1;31m%s\033[0m\n' "$*" >&2; exit 1; }
+
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+  '') ;;
+  *) die "Unknown option: $1" ;;
+esac
+
+[[ -n "${DISPLAY:-}" ]] || die "No X11 display is set. Start the desktop first with: tuxlite-x11"
+command -v pkg >/dev/null 2>&1 || die "The Termux pkg command is not available."
+
+install_yad_in_terminal() {
+  if command -v aterm >/dev/null 2>&1; then
+    say "The graphical Store toolkit is not installed. Opening a small installer terminal."
+    aterm -title "TuxLite Store setup" -fg "#eaf6ec" -bg "#0d1814" \
+      -geometry 86x16+16+48 -e bash -lc \
+      'pkg install -y yad; status=$?; printf "\nTuxLite Store setup finished (exit %s).\n" "$status"; read -r -p "Press Enter to close..."' &
+    exit 0
+  fi
+
+  cat >&2 <<'EOF'
+TuxLite Store needs the optional YAD GUI toolkit.
+Install it inside Termux, then start the store again:
+
+  pkg install -y yad
+EOF
+  exit 1
+}
+
+command -v yad >/dev/null 2>&1 || install_yad_in_terminal
+command -v tuxlite-store-action >/dev/null 2>&1 || die "tuxlite-store-action is missing. Re-run the TuxLite installer."
+
+is_installed() {
+  command -v dpkg-query >/dev/null 2>&1 || return 1
+  [[ "$(dpkg-query -W -f='${db:Status-Status}' "$1" 2>/dev/null || true)" == "installed" ]]
+}
+
+# A deliberately small, static catalog. Package names are controlled here rather
+# than accepting arbitrary shell input from the GUI.
+CATALOG=(
+  "File manager|thunar|Desktop|Browse project folders and downloads"
+  "Code editor|geany|Development|Light graphical editor for source files"
+  "Image viewer|feh|Media|Fast image viewing and simple slideshows"
+  "Web browser|netsurf|Internet|Small, low-resource graphical browser"
+  "Calculator|galculator|Utility|Simple desktop calculator"
+  "Archive manager|xarchiver|Utility|Create and extract common archives"
+  "Git|git|Development|Version control in the terminal"
+  "Python|python|Development|Python scripts and small tools"
+  "Nano|nano|Terminal|Tiny terminal text editor"
+  "Htop|htop|Terminal|Interactive process viewer"
+)
+
+catalog_rows=()
+for entry in "${CATALOG[@]}"; do
+  IFS='|' read -r title package category description <<<"${entry}"
+  if is_installed "${package}"; then
+    title="✓ ${title}"
+  fi
+  catalog_rows+=("${title}" "${package}" "${category}" "${description}")
+done
+
+while :; do
+  if selected="$(yad --list \
+    --title="${STORE_TITLE}" \
+    --text="Install only what you need. Package manager output shows the real download and storage impact before changes." \
+    --width=720 --height=490 --center \
+    --search-column=1 \
+    --column="Application" \
+    --column="Package":HD \
+    --column="Group" \
+    --column="Description" \
+    --print-column=2 --separator='' \
+    --button="Manage selected:0" \
+    --button="Close:1" \
+    "${catalog_rows[@]}")"; then
+    :
+  else
+    exit 0
+  fi
+
+  [[ -n "${selected}" ]] || continue
+  selected_entry=""
+  for entry in "${CATALOG[@]}"; do
+    IFS='|' read -r title package category description <<<"${entry}"
+    [[ "${package}" == "${selected}" ]] && { selected_entry="${entry}"; break; }
+  done
+  [[ -n "${selected_entry}" ]] || { yad --error --text="The selected package is not in the TuxLite catalog."; continue; }
+
+  IFS='|' read -r title package category description <<<"${selected_entry}"
+  installed_note="Not installed"
+  is_installed "${package}" && installed_note="Installed"
+
+  if yad --question \
+    --title="${STORE_TITLE} — ${title}" \
+    --text="<b>${title}</b>\n${description}\n\nPackage: <tt>${package}</tt>\nGroup: ${category}\nStatus: ${installed_note}\n\nThe package manager will display the current download and storage details in a terminal." \
+    --button="Install:0" \
+    --button="Remove:2" \
+    --button="Cancel:1"; then
+    action="install"
+  else
+    choice=$?
+    case "${choice}" in
+      2) action="uninstall" ;;
+      *) continue ;;
+    esac
+  fi
+
+  if [[ "${action}" == "install" ]] && is_installed "${package}"; then
+    yad --info --title="${STORE_TITLE}" --text="${title} is already installed."
+    continue
+  fi
+  if [[ "${action}" == "uninstall" ]] && ! is_installed "${package}"; then
+    yad --info --title="${STORE_TITLE}" --text="${title} is not installed."
+    continue
+  fi
+
+  verb="Installing"
+  [[ "${action}" == "uninstall" ]] && verb="Removing"
+  aterm -title "${STORE_TITLE} — ${verb} ${title}" -fg "#eaf6ec" -bg "#0d1814" \
+    -geometry 94x24+18+56 -e tuxlite-store-action "${action}" "${package}" &
+  yad --info --title="${STORE_TITLE}" --text="${verb} <b>${title}</b> in a terminal. The package manager will show the real size before it changes your environment."
+done

@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Runs one catalog package operation in the visible aterm opened by TuxLite Store.
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+action="${1:-}"
+package="${2:-}"
+
+usage() {
+  cat <<'EOF'
+Usage: tuxlite-store-action <install|uninstall> <package>
+
+Internal helper launched by TuxLite Store. It intentionally accepts a strict
+Termux package-name character set and shows pkg output in this terminal.
+EOF
+}
+
+[[ "${action}" == "install" || "${action}" == "uninstall" ]] || { usage >&2; exit 2; }
+[[ "${package}" =~ ^[a-z0-9][a-z0-9+._-]*$ ]] || { printf 'Invalid package name.\n' >&2; exit 2; }
+command -v pkg >/dev/null 2>&1 || { printf 'The Termux pkg command is unavailable.\n' >&2; exit 1; }
+
+verb="Installing"
+[[ "${action}" == "uninstall" ]] && verb="Removing"
+printf '\033[1;38;5;155m[TuxLite Store]\033[0m %s %s\n\n' "${verb}" "${package}"
+
+set +e
+pkg "${action}" -y "${package}"
+status=$?
+set -e
+
+printf '\n\033[1;38;5;155m[TuxLite Store]\033[0m %s finished with exit code %s.\n' "${verb}" "${status}"
+read -r -p "Press Enter to close this terminal..." _
+exit "${status}"
