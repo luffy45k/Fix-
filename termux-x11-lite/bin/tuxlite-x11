@@ -1,0 +1,73 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Starts the TuxLite Openbox session inside Termux:X11.
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+DISPLAY_ID=":1"
+LEGACY_DRAWING=1
+FORCE_BGRA=0
+
+usage() {
+  cat <<'EOF'
+Usage: tuxlite-x11 [options]
+
+Options:
+  --fast                 Do not pass Termux:X11's legacy drawing fallback.
+  --legacy-drawing       Use the compatibility renderer (default).
+  --force-bgra           Use the BGRA workaround for swapped colors.
+  --display :N           Use X display N (default: :1).
+  -h, --help             Show this help.
+
+Examples:
+  tuxlite-x11
+  tuxlite-x11 --fast
+  tuxlite-x11 --force-bgra
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --fast) LEGACY_DRAWING=0 ;;
+    --legacy-drawing) LEGACY_DRAWING=1 ;;
+    --force-bgra) FORCE_BGRA=1 ;;
+    --display)
+      shift
+      [[ $# -gt 0 ]] || { printf 'Missing value for --display\n' >&2; exit 2; }
+      DISPLAY_ID="$1"
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+[[ "${DISPLAY_ID}" =~ ^:[0-9]+$ ]] || { printf 'Display must look like :1, :2, etc.\n' >&2; exit 2; }
+command -v termux-x11 >/dev/null 2>&1 || {
+  printf 'termux-x11 is missing. Run the TuxLite installer inside Termux first.\n' >&2
+  exit 1
+}
+command -v openbox-session >/dev/null 2>&1 || {
+  printf 'openbox-session is missing. Run the TuxLite installer inside Termux first.\n' >&2
+  exit 1
+}
+
+if [[ -x /system/bin/pm ]] && ! /system/bin/pm path com.termux.x11 >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+The Termux:X11 Android companion app was not found.
+Install it from the official Termux:X11 release, then run tuxlite-x11 again:
+https://github.com/termux/termux-x11
+EOF
+  exit 1
+fi
+
+export DISPLAY="${DISPLAY_ID}"
+export TERMUX_X11_XSTARTUP="${PREFIX}/bin/tuxlite-session"
+args=("${DISPLAY_ID}")
+(( LEGACY_DRAWING )) && args+=("-legacy-drawing")
+(( FORCE_BGRA )) && args+=("-force-bgra")
+
+printf '\033[1;38;5;155m[TuxLite X11]\033[0m Starting Openbox on DISPLAY=%s\n' "${DISPLAY}"
+printf 'Use \033[1mtuxlite-x11-stop\033[0m in another Termux session to stop it.\n'
+
+# Termux:X11 owns the Android activity and runs tuxlite-session through -xstartup.
+exec termux-x11 "${args[@]}" -xstartup "${TERMUX_X11_XSTARTUP}"

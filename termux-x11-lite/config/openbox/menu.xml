@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="TuxLite X11">
+    <item label="Terminal">
+      <action name="Execute"><execute>aterm -title "TuxLite shell" -fg "#eaf6ec" -bg "#0d1814"</execute></action>
+    </item>
+    <item label="File manager (if installed)">
+      <action name="Execute"><execute>thunar</execute></action>
+    </item>
+    <separator label="Session" />
+    <item label="Reconfigure Openbox">
+      <action name="Reconfigure" />
+    </item>
+    <item label="Exit desktop">
+      <action name="Exit" />
+    </item>
+  </menu>
+</openbox_menu>

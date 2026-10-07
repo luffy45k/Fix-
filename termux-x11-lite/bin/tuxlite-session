@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Internal X11 startup command invoked by tuxlite-x11.
+set -Eeuo pipefail
+
+export DISPLAY="${DISPLAY:-:1}"
+export XDG_CURRENT_DESKTOP="TuxLite"
+export XDG_SESSION_DESKTOP="TuxLite"
+export DESKTOP_SESSION="tuxlite-x11"
+export XDG_CONFIG_HOME="${HOME}/.config/tuxlite-x11"
+export XDG_CONFIG_DIRS="${PREFIX}/etc/xdg${XDG_CONFIG_DIRS:+:${XDG_CONFIG_DIRS}}"
+export XDG_RUNTIME_DIR="${TMPDIR:-${PREFIX}/tmp}/tuxlite-x11-runtime"
+
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 0700 "${XDG_RUNTIME_DIR}"
+
+# This gives a clean X root even if the autostart script is customized later.
+if command -v xsetroot >/dev/null 2>&1; then
+  xsetroot -solid '#08100e' || true
+fi
+
+if command -v dbus-run-session >/dev/null 2>&1; then
+  exec dbus-run-session -- openbox-session
+elif command -v dbus-launch >/dev/null 2>&1; then
+  exec dbus-launch --exit-with-session openbox-session
+else
+  exec openbox-session
+fi

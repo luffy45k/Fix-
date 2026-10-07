@@ -1,0 +1,54 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Prints a small, dependency-free diagnostic for the TuxLite X11 session.
+set -u
+
+ok() { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
+no() { printf '  \033[1;31m✗\033[0m %s\n' "$*"; }
+section() { printf '\n\033[1;38;5;155m%s\033[0m\n' "$*"; }
+
+section "TuxLite X11 status"
+printf '  Prefix: %s\n' "${PREFIX:-not set}"
+printf '  Profile: %s\n' "${HOME}/.config/tuxlite-x11"
+
+section "Required pieces"
+for command in termux-x11 openbox-session aterm; do
+  if command -v "$command" >/dev/null 2>&1; then ok "${command}: $(command -v "$command")"; else no "${command}: missing"; fi
+done
+
+if [[ -x /system/bin/pm ]] && /system/bin/pm path com.termux.x11 >/dev/null 2>&1; then
+  ok "Termux:X11 Android companion installed"
+else
+  no "Termux:X11 Android companion not detected"
+fi
+
+section "Running processes"
+if command -v pgrep >/dev/null 2>&1 && pgrep -af termux-x11 >/dev/null 2>&1; then
+  pgrep -af termux-x11 || true
+else
+  printf '  No termux-x11 process found.\n'
+fi
+
+section "Lite package footprint"
+if command -v dpkg-query >/dev/null 2>&1; then
+  total_kib=0
+  for package in termux-x11-nightly openbox aterm dbus xorg-xsetroot procps; do
+    installed_kib="$(dpkg-query -W -f='${Installed-Size}' "${package}" 2>/dev/null || true)"
+    case "${installed_kib}" in
+      ''|*[!0-9]*) printf '  %s: not installed\n' "${package}" ;;
+      *)
+        printf '  %s: %s KiB\n' "${package}" "${installed_kib}"
+        total_kib=$((total_kib + installed_kib))
+        ;;
+    esac
+  done
+  printf '  Direct-package total: %s MiB\n' "$(( (total_kib + 1023) / 1024 ))"
+else
+  printf '  dpkg-query is unavailable.\n'
+fi
+
+section "Local TuxLite footprint"
+if command -v du >/dev/null 2>&1; then
+  du -sh "${HOME}/.local/share/tuxlite-x11" "${HOME}/.config/tuxlite-x11" 2>/dev/null || true
+fi
+
+printf '\nTip: dependencies, package caches, and your files also use space. Use `du -sh "$PREFIX"` to measure the total Termux environment.\n'

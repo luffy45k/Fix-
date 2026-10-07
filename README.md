@@ -2,7 +2,7 @@
 
 A small, Android-first **Linux workspace UI** designed around the Realme 9 4G form factor. It combines a Play Store-style package catalog, an app launcher, a terminal-inspired command deck, and a selectable theme gallery in one offline-friendly interface.
 
-> **Prototype scope:** this repository provides the complete UI/PWA and an Android wrapper configuration. Package installs and terminal commands are deliberately simulated locally: this app does **not** embed Termux, ship a Linux root filesystem, ask for root, or access Android files. Connect a real backend only after choosing the security model and runtime you want.
+> **App scope:** the Android UI/PWA itself is a safe launcher and catalog; its package actions and terminal screen are simulated locally. It does **not** embed Termux, ship a Linux root filesystem, ask for root, or access Android files. For a real lightweight desktop, use the separate [TuxLite X11 runtime](termux-x11-lite/README.md), which is run explicitly inside the Termux app.
 
 ## What is included
 
@@ -12,6 +12,22 @@ A small, Android-first **Linux workspace UI** designed around the Realme 9 4G fo
 - **Four built-in themes** — Forest Terminal, Tidal Blue, Orbit Plum, and Solar Sand — plus high contrast and reduced motion controls.
 - **Installable PWA shell** with a manifest, service worker, and no external runtime assets.
 - **Capacitor 8 configuration** so the same UI can be wrapped as an Android app / Play Store AAB.
+- **TuxLite X11 runtime scripts** — a real direct-Termux Openbox desktop using Termux:X11, `aterm`, D-Bus, and no PRoot Linux image. See [termux-x11-lite/README.md](termux-x11-lite/README.md).
+
+## Real Termux X11 desktop
+
+To build the smallest practical graphical Linux-style desktop on a Realme 9 4G, use the direct Termux runtime rather than bundling a Debian/Ubuntu image:
+
+```bash
+pkg update -y
+pkg install -y git
+git clone --branch arena/5609cb03-fix https://github.com/luffy45k/Fix-.git
+cd Fix-/termux-x11-lite
+bash install.sh
+tuxlite-x11
+```
+
+You must install the separate Termux:X11 Android companion app first. The runtime is documented in detail in [termux-x11-lite/README.md](termux-x11-lite/README.md), including renderer fixes, stopping the session, and size auditing.
 
 ## Run locally
 
@@ -72,12 +88,12 @@ pwd
 clear
 ```
 
-## Native integration next steps
+## Optional Android hub integration
 
-To turn the UI into a functional Linux environment, choose one approach before adding code:
+The real X11 session already works when started explicitly in Termux via `tuxlite-x11`. To make a button in the Android catalog launch or manage that separate session, choose an integration model before adding code:
 
-1. **Termux plugin/API integration** — preserve Termux's security boundaries and use documented intents or APIs where available.
-2. **A sandboxed native runtime** — execute only explicitly approved processes in the app sandbox; never imply root access.
+1. **Termux plugin/API or documented intent integration** — preserve Termux's security boundaries and never assume a particular Termux signature/source.
+2. **A sandboxed native runtime** — execute only explicitly approved processes in this app's own sandbox; never imply root access.
 3. **Remote development workspace** — proxy authenticated commands to a server and show connection/privacy state clearly.
 
 Whichever route you choose, retain the storage guardrail, request the smallest possible set of Android permissions, publish a privacy policy, and validate on a physical Realme 9 4G before release.
