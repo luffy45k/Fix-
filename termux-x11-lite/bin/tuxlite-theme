@@ -1,0 +1,175 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# TuxLite Theme Studio — applies desktop and future-terminal palettes in Termux:X11.
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+THEME_DIR="${HOME}/.config/tuxlite-x11"
+THEME_FILE="${THEME_DIR}/theme.env"
+
+# slug|name|desktop background|terminal background|terminal foreground|accent|description
+PRESETS=(
+  "forest|Forest Terminal|#08100e|#0d1814|#eaf6ec|#d8ff69|Moss green, low-glare terminal palette"
+  "ocean|Tidal Blue|#08111c|#0b1827|#edf6ff|#83dcff|Cool blue focus for longer sessions"
+  "plum|Orbit Plum|#140c18|#1a0e20|#fcf0ff|#f1a6ff|Warm violet shadows and soft contrast"
+  "solar|Solar Sand|#17120a|#21180b|#fff8e8|#ffd578|Mellow amber palette with low glare"
+)
+
+usage() {
+  cat <<'EOF'
+Usage: tuxlite-theme [options]
+
+Open TuxLite Theme Studio for the Openbox desktop.
+
+Options:
+  --apply <forest|ocean|plum|solar>  Apply a preset without opening the GUI.
+  --reset                            Apply the Forest Terminal preset.
+  -h, --help                         Show this help.
+
+The graphical picker needs the optional YAD package:
+  pkg install -y yad
+EOF
+}
+
+die() { printf '\033[1;31m%s\033[0m\n' "$*" >&2; exit 1; }
+info() { printf '\033[1;38;5;155m[TuxLite Theme Studio]\033[0m %s\n' "$*"; }
+
+read_theme_value() {
+  local key="$1" fallback="$2" value
+  value=""
+  if [[ -r "${THEME_FILE}" ]]; then
+    value="$(awk -F= -v key="${key}" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "${THEME_FILE}" 2>/dev/null || true)"
+  fi
+  [[ -n "${value}" ]] && printf '%s' "${value}" || printf '%s' "${fallback}"
+}
+
+is_hex_color() { [[ "$1" =~ ^#[0-9A-Fa-f]{6}$ ]]; }
+
+apply_palette() {
+  local name="$1" desktop_bg="$2" terminal_bg="$3" terminal_fg="$4" accent="$5"
+  is_hex_color "${desktop_bg}" || die "Invalid desktop color."
+  is_hex_color "${terminal_bg}" || die "Invalid terminal background color."
+  is_hex_color "${terminal_fg}" || die "Invalid terminal foreground color."
+  is_hex_color "${accent}" || die "Invalid accent color."
+
+  mkdir -p "${THEME_DIR}"
+  umask 077
+  local temporary="${THEME_FILE}.tmp.$$"
+  cat > "${temporary}" <<EOF
+# Written by TuxLite Theme Studio. Edit with care; colors must be #RRGGBB.
+TUXLITE_THEME=${name}
+TUXLITE_DESKTOP_BG=${desktop_bg}
+TUXLITE_TERMINAL_BG=${terminal_bg}
+TUXLITE_TERMINAL_FG=${terminal_fg}
+TUXLITE_ACCENT=${accent}
+EOF
+  mv -f "${temporary}" "${THEME_FILE}"
+
+  if [[ -n "${DISPLAY:-}" ]] && command -v xsetroot >/dev/null 2>&1; then
+    xsetroot -solid "${desktop_bg}" || true
+  fi
+  if [[ -n "${DISPLAY:-}" ]] && command -v openbox >/dev/null 2>&1; then
+    openbox --reconfigure >/dev/null 2>&1 || true
+  fi
+}
+
+load_preset() {
+  local wanted="$1" entry slug name desktop_bg terminal_bg terminal_fg accent description
+  for entry in "${PRESETS[@]}"; do
+    IFS='|' read -r slug name desktop_bg terminal_bg terminal_fg accent description <<<"${entry}"
+    if [[ "${slug}" == "${wanted}" ]]; then
+      apply_palette "${name}" "${desktop_bg}" "${terminal_bg}" "${terminal_fg}" "${accent}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+pick_color() {
+  local label="$1" initial="$2" picked
+  if picked="$(yad --color --title="TuxLite Theme Studio — ${label}" --init-color="${initial}" --output=hex)"; then
+    is_hex_color "${picked}" || die "The color picker returned an unsupported color."
+    printf '%s' "${picked}"
+  else
+    return 1
+  fi
+}
+
+custom_palette() {
+  local current_bg current_terminal_bg current_fg current_accent desktop_bg terminal_bg terminal_fg accent
+  current_bg="$(read_theme_value TUXLITE_DESKTOP_BG '#08100e')"
+  current_terminal_bg="$(read_theme_value TUXLITE_TERMINAL_BG '#0d1814')"
+  current_fg="$(read_theme_value TUXLITE_TERMINAL_FG '#eaf6ec')"
+  current_accent="$(read_theme_value TUXLITE_ACCENT '#d8ff69')"
+
+  desktop_bg="$(pick_color 'Desktop background' "${current_bg}")" || return 0
+  terminal_bg="$(pick_color 'Terminal background' "${current_terminal_bg}")" || return 0
+  terminal_fg="$(pick_color 'Terminal text' "${current_fg}")" || return 0
+  accent="$(pick_color 'Accent color' "${current_accent}")" || return 0
+  apply_palette "Custom" "${desktop_bg}" "${terminal_bg}" "${terminal_fg}" "${accent}"
+  yad --info --title="TuxLite Theme Studio" --text="Applied <b>Custom</b>. The desktop background changed now; new terminals use the selected palette."
+}
+
+mode="gui"
+preset=""
+while (($#)); do
+  case "$1" in
+    --apply)
+      shift
+      [[ $# -gt 0 ]] || die "Missing preset after --apply."
+      mode="apply"
+      preset="$1"
+      ;;
+    --reset) mode="apply"; preset="forest" ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "Unknown option: $1" ;;
+  esac
+  shift
+done
+
+if [[ "${mode}" == "apply" ]]; then
+  load_preset "${preset}" || die "Unknown preset: ${preset}. Use forest, ocean, plum, or solar."
+  info "Applied $(read_theme_value TUXLITE_THEME 'theme'). New terminals use this palette."
+  exit 0
+fi
+
+[[ -n "${DISPLAY:-}" ]] || die "No X11 display is set. Start the desktop first with: tuxlite-x11"
+command -v yad >/dev/null 2>&1 || die "Theme Studio needs YAD. Install it with: pkg install -y yad"
+
+while :; do
+  current="$(read_theme_value TUXLITE_THEME 'Forest Terminal')"
+  rows=()
+  for entry in "${PRESETS[@]}"; do
+    IFS='|' read -r slug name desktop_bg terminal_bg terminal_fg accent description <<<"${entry}"
+    marker=""
+    [[ "${name}" == "${current}" ]] && marker="✓ "
+    rows+=("${slug}" "${marker}${name}" "${description}" "${accent}")
+  done
+
+  if chosen="$(yad --list \
+    --title="TuxLite Theme Studio" \
+    --text="Current palette: <b>${current}</b>\nChoose a compact desktop and terminal palette." \
+    --width=690 --height=440 --center \
+    --column="Key":HD \
+    --column="Theme" \
+    --column="Description" \
+    --column="Accent" \
+    --print-column=1 --separator='' \
+    --button="Apply selected:0" \
+    --button="Custom colors:2" \
+    --button="Reset Forest:3" \
+    --button="Close:1" \
+    "${rows[@]}")"; then
+    load_preset "${chosen}" || { yad --error --text="Please select a theme first."; continue; }
+    yad --info --title="TuxLite Theme Studio" --text="Applied <b>$(read_theme_value TUXLITE_THEME 'theme')</b>. The desktop changed now; new terminals use the palette."
+  else
+    choice=$?
+    case "${choice}" in
+      2) custom_palette ;;
+      3)
+        load_preset forest
+        yad --info --title="TuxLite Theme Studio" --text="Restored <b>Forest Terminal</b>."
+        ;;
+      *) exit 0 ;;
+    esac
+  fi
+done

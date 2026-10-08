@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111c19" />
+    <meta name="description" content="Termux GUI Lite — a lightweight Linux workspace for Android." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Termux GUI Lite</title>
+  </head>
+  <body data-theme="forest">
+    <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="mark" viewBox="0 0 40 40">
+        <path d="M2 6.2C2 3.88 3.88 2 6.2 2h27.6C36.12 2 38 3.88 38 6.2v27.6c0 2.32-1.88 4.2-4.2 4.2H6.2A4.2 4.2 0 0 1 2 33.8V6.2Z" fill="currentColor" />
+        <path d="M9.2 10.1h21.6v4.5H13.7v14.9H9.2V10.1Zm8.76 10.03 5.2 4.8-5.2 4.8v-3.35h-5.2v-2.5h5.2v-3.75Zm11.3 6.25h4.2v3.36h-4.2v-3.36Z" fill="#102018" />
+      </symbol>
+      <symbol id="home" viewBox="0 0 24 24"><path d="m3.7 10.3 7-6.13a2 2 0 0 1 2.6 0l7 6.13v8.37a2 2 0 0 1-2 2H5.7a2 2 0 0 1-2-2V10.3Z"/><path d="M9.33 20.67v-6h5.34v6"/></symbol>
+      <symbol id="grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.3"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.3"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.3"/><rect x="14" y="14" width="6.5" height="6.5" rx="1.3"/></symbol>
+      <symbol id="terminal" viewBox="0 0 24 24"><rect x="2.75" y="3.75" width="18.5" height="16.5" rx="2.2"/><path d="m7 9 3 3-3 3M12.75 15.5h4.25"/></symbol>
+      <symbol id="palette" viewBox="0 0 24 24"><path d="M12 3.25c-5.1 0-9.25 3.53-9.25 7.87 0 2.48 1.48 4.54 3.45 5.94.72.51.9 1.22.9 1.91 0 1.55 1.26 2.78 2.81 2.78h2.35c1.04 0 1.89-.85 1.89-1.9 0-.65-.26-1.15-.26-1.75 0-1.08.88-1.96 1.97-1.96h.35c2.78 0 4.99-2.34 4.99-5.18 0-4.26-4.12-7.71-9.25-7.71Z"/><circle cx="7.75" cy="11.08" r="1"/><circle cx="11.25" cy="7.9" r="1"/><circle cx="15.6" cy="8.65" r="1"/></symbol>
+      <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.15 13.55c.07-.5.1-1.02.1-1.55 0-.52-.03-1.04-.11-1.54l2.06-1.61-2-3.46-2.44.98a7.54 7.54 0 0 0-2.67-1.54L13.72 2h-4l-.37 2.83a7.54 7.54 0 0 0-2.67 1.54l-2.44-.98-2 3.46 2.06 1.61A9.7 9.7 0 0 0 4.2 12c0 .53.03 1.05.11 1.55L2.25 15.16l2 3.46 2.44-.98a7.54 7.54 0 0 0 2.67 1.54L9.73 22h4l.37-2.82a7.54 7.54 0 0 0 2.67-1.54l2.44.98 2-3.46-2.06-1.61Z"/></symbol>
+      <symbol id="search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.3 4.3"/></symbol>
+      <symbol id="bell" viewBox="0 0 24 24"><path d="M18.1 10.1c0-3.55-2.1-6.1-6.1-6.1S5.9 6.55 5.9 10.1c0 5-2.1 5.8-2.1 7.15h16.4c0-1.35-2.1-2.15-2.1-7.15ZM9.6 20.1h4.8"/></symbol>
+      <symbol id="spark" viewBox="0 0 24 24"><path d="m12 2.5 1.55 6.03L19.5 10l-5.95 1.47L12 17.5l-1.55-6.03L4.5 10l5.95-1.47L12 2.5ZM19.1 15.2l.7 2.72 2.7.68-2.7.67-.7 2.73-.7-2.73-2.7-.67 2.7-.68.7-2.72Z"/></symbol>
+      <symbol id="bolt" viewBox="0 0 24 24"><path d="m13.43 2.8-8.2 11h5.84l-.7 7.4 8.4-11.12h-5.93l.59-7.28Z"/></symbol>
+      <symbol id="box" viewBox="0 0 24 24"><path d="m12 3.1 8.05 4.38v8.96L12 20.9l-8.05-4.46V7.48L12 3.1Z"/><path d="m3.95 7.48L12 12l8.05-4.52M12 12v8.9"/></symbol>
+      <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="download" viewBox="0 0 24 24"><path d="M12 3.4v11.2M7.35 10.6 12 15.25l4.65-4.65M4.1 19.8h15.8"/></symbol>
+      <symbol id="check" viewBox="0 0 24 24"><path d="m5.2 12.55 4.2 4.15 9.4-9.4"/></symbol>
+      <symbol id="play" viewBox="0 0 24 24"><path d="m8.2 5.5 10.2 6.5-10.2 6.5v-13Z"/></symbol>
+      <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.35"/><circle cx="12" cy="12" r="1.35"/><circle cx="19" cy="12" r="1.35"/></symbol>
+      <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+      <symbol id="folder" viewBox="0 0 24 24"><path d="M3.3 7.5a2.1 2.1 0 0 1 2.1-2.1h4.12l1.8 2.14h7.28a2.1 2.1 0 0 1 2.1 2.1v7.46a2.1 2.1 0 0 1-2.1 2.1H5.4a2.1 2.1 0 0 1-2.1-2.1V7.5Z"/></symbol>
+      <symbol id="cpu" viewBox="0 0 24 24"><rect x="6.2" y="6.2" width="11.6" height="11.6" rx="1.4"/><path d="M9.3 2.8v3.4M14.7 2.8v3.4M9.3 17.8v3.4M14.7 17.8v3.4M2.8 9.3h3.4M2.8 14.7h3.4M17.8 9.3h3.4M17.8 14.7h3.4"/></symbol>
+      <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3.1 19 6v5.42c0 4.39-2.94 7.76-7 9.48-4.06-1.72-7-5.09-7-9.48V6l7-2.9Z"/><path d="m8.9 12.05 2.05 2.05 4.1-4.1"/></symbol>
+      <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.9A8.6 8.6 0 0 1 9.1 4 8.5 8.5 0 1 0 20 14.9Z"/></symbol>
+      <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 6.5h10M17 6.5h3M4 12h3M10 12h10M4 17.5h12M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/></symbol>
+      <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10.6v5.1M12 7.7v.1"/></symbol>
+      <symbol id="refresh" viewBox="0 0 24 24"><path d="M19.1 9.2A7.5 7.5 0 0 0 5.3 7.1L3.6 9.3M4.9 14.8a7.5 7.5 0 0 0 13.8 2.1l1.7-2.2M3.65 5.75v3.55H7.2M20.35 18.25V14.7H16.8"/></symbol>
+    </svg>
+
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-cluster">
+          <div class="brand-mark" aria-hidden="true"><svg><use href="#mark"></use></svg></div>
+          <div>
+            <p class="eyebrow">Android Linux workspace</p>
+            <h1>Termux GUI <span>Lite</span></h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button notification-button" id="notifications-button" aria-label="View notifications">
+            <svg><use href="#bell"></use></svg><span class="notification-dot"></span>
+          </button>
+          <button class="avatar-button" id="profile-button" aria-label="Open device menu">R9</button>
+        </div>
+      </header>
+
+      <main id="main-content" tabindex="-1">
+        <section class="view view-active" id="discover-view" data-view="discover" aria-labelledby="discover-title">
+          <div class="hero-copy">
+            <div class="hero-title-row">
+              <div>
+                <p class="eyebrow accent"><svg><use href="#spark"></use></svg> Lightweight by design</p>
+                <h2 id="discover-title">Your pocket<br /><em>Linux desk.</em></h2>
+              </div>
+              <button class="scan-button" id="health-check-button" aria-label="Run system check">
+                <svg><use href="#bolt"></use></svg>
+              </button>
+            </div>
+            <p class="hero-description">A calm, capable workspace tuned for your Realme 9. Build only what you need.</p>
+          </div>
+
+          <section class="storage-panel" aria-label="Storage budget">
+            <div class="storage-ring-wrap">
+              <div class="storage-ring"><span id="storage-percent">61</span><small>%</small></div>
+            </div>
+            <div class="storage-content">
+              <div class="section-kicker"><span>Local workspace</span><span id="storage-amount">427 / 700 MB</span></div>
+              <div class="storage-bar"><span id="storage-fill"></span></div>
+              <p id="storage-message">273 MB stays free for your next tool.</p>
+            </div>
+            <button class="small-round-button" data-nav="library" aria-label="Manage storage"><svg><use href="#arrow"></use></svg></button>
+          </section>
+
+          <div class="section-heading top-spaced">
+            <div><p class="eyebrow">Quick launch</p><h3>Keep moving</h3></div>
+            <button class="text-button" data-nav="library">View all <svg><use href="#arrow"></use></svg></button>
+          </div>
+          <div class="quick-launches" id="quick-launches"></div>
+
+          <div class="section-heading">
+            <div><p class="eyebrow">Curated for Lite</p><h3>Install in one tap</h3></div>
+            <button class="text-button" data-nav="library">See catalog <svg><use href="#arrow"></use></svg></button>
+          </div>
+          <div class="featured-scroll" id="featured-cards"></div>
+
+          <section class="activity-card" aria-labelledby="activity-heading">
+            <div class="activity-icon"><svg><use href="#terminal"></use></svg></div>
+            <div class="activity-copy"><p class="eyebrow">Last session</p><h3 id="activity-heading">Ubuntu CLI is ready</h3><p><span class="status-dot"></span> Session saved · 2 min ago</p></div>
+            <button class="plain-chevron" data-nav="terminal" aria-label="Open terminal"><svg><use href="#chevron"></use></svg></button>
+          </section>
+        </section>
+
+        <section class="view" id="library-view" data-view="library" aria-labelledby="library-title" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow accent"><svg><use href="#grid"></use></svg> Package playground</p>
+              <h2 id="library-title">App <em>library.</em></h2>
+            </div>
+            <button class="icon-button surface-button" id="library-sort-button" aria-label="Sort packages"><svg><use href="#sliders"></use></svg></button>
+          </div>
+          <label class="search-field" for="app-search">
+            <svg><use href="#search"></use></svg>
+            <input id="app-search" type="search" autocomplete="off" placeholder="Search lightweight tools" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <div class="chip-row" id="category-chips" aria-label="Filter apps"></div>
+          <section class="library-summary" aria-label="Package summary">
+            <div><span class="summary-label">Installed</span><strong id="installed-count">4 tools</strong></div>
+            <div class="summary-divider"></div>
+            <div><span class="summary-label">Free budget</span><strong id="free-budget">273 MB</strong></div>
+            <button class="small-round-button" id="update-button" aria-label="Check for updates"><svg><use href="#refresh"></use></svg></button>
+          </section>
+          <div class="app-list" id="app-list"></div>
+        </section>
+
+        <section class="view" id="terminal-view" data-view="terminal" aria-labelledby="terminal-title" hidden>
+          <div class="page-heading terminal-heading">
+            <div>
+              <p class="eyebrow accent"><svg><use href="#terminal"></use></svg> Sandbox shell</p>
+              <h2 id="terminal-title">Command <em>deck.</em></h2>
+            </div>
+            <div class="connection-pill"><span></span> local</div>
+          </div>
+          <section class="terminal-card">
+            <div class="terminal-tabs"><span class="tab-active"><i></i> bash</span><button id="clear-terminal" aria-label="Clear terminal">Clear</button></div>
+            <div class="terminal-window" id="terminal-output" aria-live="polite">
+              <p><span class="prompt">r9@tuxlite</span><span class="colon">:</span><span class="path">~/workspace</span><span class="dollar"> $</span> <span class="command">neofetch</span></p>
+              <pre class="neofetch">       .--.                <b>r9@tuxlite</b>
+      |o_o |               ─────────────
+      |:_/ |               <span>OS</span> TuxLite 1.0 (arm64)
+     //   \ \              <span>Device</span> Realme 9 4G
+    (|     | )             <span>Shell</span> bash 5.2
+   /'\_   _/`\            <span>Memory</span> 427 MB / 700 MB
+   \___)=(___/</pre>
+              <p class="hint-line">Type <span>help</span> to see safe demo commands.</p>
+            </div>
+            <form class="terminal-input-row" id="terminal-form">
+              <span class="prompt">r9@tuxlite</span><span class="colon">:</span><span class="path">~</span><span class="dollar"> $</span>
+              <input id="terminal-input" aria-label="Terminal command" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type a command" />
+              <button type="submit" aria-label="Run command"><svg><use href="#arrow"></use></svg></button>
+            </form>
+          </section>
+          <section class="command-starters" aria-label="Command starters">
+            <button data-command="help"><svg><use href="#info"></use></svg> Help</button>
+            <button data-command="pkg list"><svg><use href="#box"></use></svg> Packages</button>
+            <button data-command="theme"><svg><use href="#palette"></use></svg> Theme</button>
+            <button data-command="neofetch"><svg><use href="#cpu"></use></svg> Device</button>
+          </section>
+          <section class="terminal-tip"><svg><use href="#shield"></use></svg><p><strong>Local by default.</strong> This interface emulates a safe starter shell; it does not access your Android files or root permissions.</p></section>
+        </section>
+
+        <section class="view" id="themes-view" data-view="themes" aria-labelledby="themes-title" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow accent"><svg><use href="#palette"></use></svg> Make it yours</p>
+              <h2 id="themes-title">Pick a <em>mood.</em></h2>
+            </div>
+            <button class="icon-button surface-button" id="dark-mode-button" aria-label="Toggle contrast"><svg><use href="#moon"></use></svg></button>
+          </div>
+          <p class="page-intro">Every palette keeps contrast comfortable in Android dark mode and uses no extra asset downloads.</p>
+          <div class="theme-grid" id="theme-grid"></div>
+          <section class="theme-preview-card">
+            <div class="preview-grid"></div>
+            <div class="preview-window">
+              <div class="preview-window-top"><span></span><span></span><span></span></div>
+              <p><b>~/workspace</b> <i>$</i> make something small</p>
+              <p class="preview-green">ready when you are_</p>
+            </div>
+            <div class="preview-copy"><p class="eyebrow">Current palette</p><h3 id="current-theme-name">Forest Terminal</h3><p id="current-theme-description">Mossy greens with a bright signal lime.</p></div>
+          </section>
+          <section class="appearance-list" aria-label="Appearance preferences">
+            <button class="appearance-row" id="motion-button"><span class="appearance-icon"><svg><use href="#spark"></use></svg></span><span><strong>Soft motion</strong><small>Gentle transitions between views</small></span><span class="toggle is-on" id="motion-toggle" aria-hidden="true"><i></i></span></button>
+            <button class="appearance-row" id="contrast-button"><span class="appearance-icon"><svg><use href="#moon"></use></svg></span><span><strong>High contrast</strong><small>Increase visual separation</small></span><span class="toggle" id="contrast-toggle" aria-hidden="true"><i></i></span></button>
+          </section>
+        </section>
+
+        <section class="view" id="system-view" data-view="system" aria-labelledby="system-title" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow accent"><svg><use href="#settings"></use></svg> Device profile</p>
+              <h2 id="system-title">Built for <em>your phone.</em></h2>
+            </div>
+            <button class="avatar-button large-avatar" aria-label="Realme 9 profile">R9</button>
+          </div>
+          <section class="device-card">
+            <div class="device-dots"><i></i><i></i><i></i></div>
+            <div class="device-art"><div class="device-screen"><div></div><span></span><span></span><span></span></div></div>
+            <div class="device-info"><p class="eyebrow">Active device</p><h3>Realme 9 4G</h3><p>Snapdragon 680 · arm64 · Android 14</p></div>
+            <span class="healthy-badge"><i></i> Healthy</span>
+          </section>
+          <section class="metric-grid" aria-label="System information">
+            <article><svg><use href="#cpu"></use></svg><span>Runtime</span><strong>arm64</strong></article>
+            <article><svg><use href="#folder"></use></svg><span>Workspace</span><strong id="metric-workspace">427 MB</strong></article>
+            <article><svg><use href="#shield"></use></svg><span>Permissions</span><strong>Minimal</strong></article>
+            <article><svg><use href="#bolt"></use></svg><span>Launch</span><strong>0.4 sec</strong></article>
+          </section>
+          <section class="settings-group">
+            <p class="eyebrow">Lite guardrails</p>
+            <button class="settings-row" id="budget-button"><span><svg><use href="#box"></use></svg></span><div><strong>700 MB app budget</strong><small>Stop installs before the workspace grows</small></div><b id="budget-state">On</b><svg class="chevron"><use href="#chevron"></use></svg></button>
+            <button class="settings-row" id="offline-button"><span><svg><use href="#download"></use></svg></span><div><strong>Offline starter kit</strong><small>App shell available without data</small></div><b>Ready</b><svg class="chevron"><use href="#chevron"></use></svg></button>
+            <button class="settings-row" id="about-button"><span><svg><use href="#info"></use></svg></span><div><strong>About TuxLite</strong><small>Version 1.0 · UI prototype</small></div><svg class="chevron"><use href="#chevron"></use></svg></button>
+          </section>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-nav="discover"><svg><use href="#home"></use></svg><span>Home</span></button>
+        <button class="nav-item" data-nav="library"><svg><use href="#grid"></use></svg><span>Apps</span></button>
+        <button class="nav-item nav-terminal" data-nav="terminal"><span class="terminal-nav-icon"><svg><use href="#terminal"></use></svg></span><span>Shell</span></button>
+        <button class="nav-item" data-nav="themes"><svg><use href="#palette"></use></svg><span>Theme</span></button>
+        <button class="nav-item" data-nav="system"><svg><use href="#settings"></use></svg><span>System</span></button>
+      </nav>
+    </div>
+
+    <div class="modal-backdrop" id="modal-backdrop" hidden></div>
+    <aside class="app-modal" id="app-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden></aside>
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <noscript><p class="no-script">Termux GUI Lite needs JavaScript for its interactive catalog and shell demo.</p></noscript>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+# TuxLite X11 Openbox startup profile.
+# This file lives in ~/.config/tuxlite-x11/openbox, so it does not replace
+# a user's normal ~/.config/openbox desktop configuration.
+
+# tuxlite-session applies the selected desktop background before Openbox starts.
+# Start one compact terminal using the active Theme Studio palette.
+tuxlite-terminal -title "TuxLite shell" -geometry 86x24+12+36 &

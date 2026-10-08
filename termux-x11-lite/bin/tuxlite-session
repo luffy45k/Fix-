@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Internal X11 startup command invoked by tuxlite-x11.
+set -Eeuo pipefail
+
+export DISPLAY="${DISPLAY:-:1}"
+export XDG_CURRENT_DESKTOP="TuxLite"
+export XDG_SESSION_DESKTOP="TuxLite"
+export DESKTOP_SESSION="tuxlite-x11"
+export XDG_CONFIG_HOME="${HOME}/.config/tuxlite-x11"
+export XDG_CONFIG_DIRS="${PREFIX}/etc/xdg${XDG_CONFIG_DIRS:+:${XDG_CONFIG_DIRS}}"
+export XDG_RUNTIME_DIR="${TMPDIR:-${PREFIX}/tmp}/tuxlite-x11-runtime"
+
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 0700 "${XDG_RUNTIME_DIR}"
+
+# Restore the Theme Studio desktop color before the Openbox autostart profile opens.
+theme_file="${HOME}/.config/tuxlite-x11/theme.env"
+desktop_bg="#08100e"
+if [[ -r "${theme_file}" ]]; then
+  configured_bg="$(awk -F= '$1 == "TUXLITE_DESKTOP_BG" {sub(/^[^=]*=/, ""); print; exit}' "${theme_file}" 2>/dev/null || true)"
+  [[ "${configured_bg}" =~ ^#[0-9A-Fa-f]{6}$ ]] && desktop_bg="${configured_bg}"
+fi
+if command -v xsetroot >/dev/null 2>&1; then
+  xsetroot -solid "${desktop_bg}" || true
+fi
+
+if command -v dbus-run-session >/dev/null 2>&1; then
+  exec dbus-run-session -- openbox-session
+elif command -v dbus-launch >/dev/null 2>&1; then
+  exec dbus-launch --exit-with-session openbox-session
+else
+  exec openbox-session
+fi

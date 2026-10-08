@@ -1,0 +1,13 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Stops the companion activity first, then any Termux:X11 server process.
+set -u
+
+if [[ -x /system/bin/am ]]; then
+  /system/bin/am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1 || true
+fi
+
+if command -v pkill >/dev/null 2>&1; then
+  pkill -f termux-x11 >/dev/null 2>&1 || true
+fi
+
+printf 'TuxLite X11 stop request sent.\n'
